@@ -1,41 +1,63 @@
 package main
 
 import (
-	coursesController "courses-api/controllers/courses" // Ajusta el path si es necesario
-	coursesRepositories "courses-api/repositories"      // Ajusta el path si es necesario
-	coursesRouter "courses-api/router/courses"          // Ajusta el path si es necesario
-	coursesServices "courses-api/services/courses"      // Ajusta el path si es necesario
+	"context"
 	"log"
 	"os"
+	"time"
+
+	coursesController "courses-api/controllers/courses"
+	coursesRepositories "courses-api/repositories"
+	coursesRouter "courses-api/router/courses"
+	coursesServices "courses-api/services/courses"
+
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// MongoConfig define la configuración para la conexión a MongoDB
-type MongoConfig = coursesRepositories.MongoConfig
-
 func main() {
-	// Configuración de la conexión a MongoDB
-	mongoConfig := MongoConfig{
-		Host:       "localhost",   // Cambia esto si es necesario
-		Port:       "27017",       // Cambia esto si es necesario
-		Username:   "root",        // Cambia esto por tu usuario
-		Password:   "root",        // Cambia esto por tu contraseña
-		Database:   "courses-api", // Nombre de tu base de datos
-		Collection: "courses",     // Nombre de tu colección
+	// Configuración del cliente MongoDB
+	mongoConfig := coursesRepositories.MongoConfig{
+		Host:       "localhost",
+		Port:       "27017",
+		Username:   "root",
+		Password:   "root",
+		Database:   "courses-api",
+		Collection: "courses",
 	}
 
-	// Crear una nueva conexión Mongo
-	courseRepository := coursesRepositories.NewMongo(mongoConfig)
+	// Crear cliente de MongoDB
+	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017").SetAuth(
+		options.Credential{
+			Username: mongoConfig.Username,
+			Password: mongoConfig.Password,
+		},
+	)
+	client, err := mongo.NewClient(clientOptions)
+	if err != nil {
+		log.Fatalf("Error al crear el cliente de MongoDB: %v", err)
+	}
 
-	// Crear instancia del servicio de cursos
-	courseService := coursesServices.NewService(courseRepository)
+	// Conectar con MongoDB
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	// Crear instancia del controlador con el servicio inyectado
+	if err := client.Connect(ctx); err != nil {
+		log.Fatalf("Error al conectar con MongoDB: %v", err)
+	}
+
+	// Inicializar el contador basado en el último ID en la colección
+	coursesRepositories.InitializeCounter(client, mongoConfig.Database, mongoConfig.Collection)
+
+	// Crear instancias del repositorio, servicio y controlador
+	courseRepo := coursesRepositories.NewMongo(mongoConfig)
+	courseService := coursesServices.NewService(courseRepo)
 	courseController := coursesController.NewController(courseService)
 
-	// Configurar el router con el controlador
-	r := coursesRouter.SetupRouter(courseController)
+	// Configurar las rutas
+	router := coursesRouter.SetupRouter(courseController)
 
-	// Leer el puerto desde la variable de entorno o usar el puerto por defecto 8080
+	// Leer el puerto desde las variables de entorno
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -43,7 +65,7 @@ func main() {
 	}
 
 	// Iniciar el servidor
-	if err := r.Run(":" + port); err != nil {
+	if err := router.Run(":" + port); err != nil {
 		log.Fatal("No se pudo iniciar el servidor:", err)
 	}
 }
