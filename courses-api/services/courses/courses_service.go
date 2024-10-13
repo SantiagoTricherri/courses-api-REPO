@@ -13,8 +13,6 @@ type Repository interface {
 	GetCourseByID(ctx context.Context, id int64) (coursesDomain.Course, error)
 	UpdateCourse(ctx context.Context, course coursesDomain.Course) (coursesDomain.Course, error)
 	DeleteCourse(ctx context.Context, id int64) error
-	SearchCourses(ctx context.Context, query string) ([]coursesDomain.Course, error)
-	GetCoursesByUserID(ctx context.Context, userID int64) ([]coursesDomain.Course, error)
 }
 
 // Service estructura para el servicio de cursos
@@ -129,46 +127,4 @@ func (s Service) UpdateCourse(ctx context.Context, req coursesDomain.UpdateCours
 
 func (s Service) DeleteCourse(ctx context.Context, id int64) error {
 	return s.repository.DeleteCourse(ctx, id)
-}
-
-func (s Service) SearchCourses(ctx context.Context, query string) ([]coursesDomain.CourseResponse, error) {
-	courses, err := s.repository.SearchCourses(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to search courses: %v", err)
-	}
-
-	var coursesDTO []coursesDomain.CourseResponse
-	for _, course := range courses {
-		coursesDTO = append(coursesDTO, coursesDomain.CourseResponse{
-			ID:           course.ID,
-			Name:         course.Name,
-			Description:  course.Description,
-			Category:     course.Category,
-			Duration:     course.Duration,
-			InstructorID: course.InstructorID,
-		})
-	}
-
-	return coursesDTO, nil
-}
-
-func (s Service) GetCoursesByUserID(ctx context.Context, userID uint) ([]coursesDomain.CourseResponse, error) {
-	courses, err := s.repository.GetCoursesByUserID(ctx, int64(userID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get courses by user ID: %v", err)
-	}
-
-	var coursesDTO []coursesDomain.CourseResponse
-	for _, course := range courses {
-		coursesDTO = append(coursesDTO, coursesDomain.CourseResponse{
-			ID:           course.ID,
-			Name:         course.Name,
-			Description:  course.Description,
-			Category:     course.Category,
-			Duration:     course.Duration,
-			InstructorID: course.InstructorID,
-		})
-	}
-
-	return coursesDTO, nil
 }
