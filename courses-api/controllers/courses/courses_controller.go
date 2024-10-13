@@ -16,8 +16,6 @@ type Service interface {
 	GetCourseByID(ctx context.Context, id int64) (coursesDomain.CourseResponse, error)
 	UpdateCourse(ctx context.Context, req coursesDomain.UpdateCourseRequest) (coursesDomain.CourseResponse, error)
 	DeleteCourse(ctx context.Context, id int64) error
-	SearchCourses(ctx context.Context, query string) ([]coursesDomain.CourseResponse, error)
-	GetCoursesByUserID(ctx context.Context, userID uint) ([]coursesDomain.CourseResponse, error)
 }
 
 // Controller estructura del controlador
@@ -97,30 +95,4 @@ func (ctrl Controller) DeleteCourse(ctx *gin.Context) {
 		return
 	}
 	ctx.Status(http.StatusOK)
-}
-
-// Buscar cursos
-func (ctrl Controller) SearchCourses(ctx *gin.Context) {
-	query := ctx.Query("q")
-	courses, err := ctrl.service.SearchCourses(ctx.Request.Context(), query)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error en la búsqueda: " + err.Error()})
-		return
-	}
-	ctx.JSON(http.StatusOK, courses)
-}
-
-// Obtener cursos por ID de usuario
-func (ctrl Controller) GetCoursesByUserID(ctx *gin.Context) {
-	userID, err := strconv.ParseUint(ctx.Param("user_id"), 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID de usuario inválido"})
-		return
-	}
-	courses, err := ctrl.service.GetCoursesByUserID(ctx.Request.Context(), uint(userID))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener cursos del usuario: " + err.Error()})
-		return
-	}
-	ctx.JSON(http.StatusOK, courses)
 }
