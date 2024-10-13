@@ -5,6 +5,7 @@ import (
 	coursesDomain "courses-api/domain/courses"
 	"fmt"
 	"log"
+	"sync"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -56,8 +57,41 @@ func NewMongo(config MongoConfig) Mongo {
 	}
 }
 
-// Métodos para operar con cursos
+// Configuración del mutex y contador en memoria
+var (
+	counter   int64
+	counterMu sync.Mutex
+)
+
+// Inicializa el contador en función del último ID en la colección
+func InitializeCounter(mongoClient *mongo.Client, dbName, collectionName string) {
+	collection := mongoClient.Database(dbName).Collection(collectionName)
+	var lastCourse coursesDomain.Course
+
+	// Buscar el curso con el ID más alto
+	opts := options.FindOne().SetSort(bson.D{{Key: "id", Value: -1}})
+	err := collection.FindOne(context.Background(), bson.M{}, opts).Decode(&lastCourse)
+	if err != nil {
+		log.Printf("No se encontró un curso existente: %v. Iniciando el contador en 0.", err)
+		counter = 0
+	} else {
+		counter = lastCourse.ID
+		log.Printf("Contador inicializado en: %d", counter)
+	}
+}
+
+// Obtener el próximo ID de manera segura
+func getNextID() int64 {
+	counterMu.Lock()
+	defer counterMu.Unlock()
+	counter++
+	return counter
+}
+
+// Crear curso con el ID generado en memoria
 func (m Mongo) CreateCourse(ctx context.Context, course coursesDomain.Course) (coursesDomain.Course, error) {
+	course.ID = getNextID()
+
 	collection := m.client.Database(m.database).Collection(m.collection)
 	_, err := collection.InsertOne(ctx, course)
 	if err != nil {
@@ -107,27 +141,4 @@ func (m Mongo) DeleteCourse(ctx context.Context, id int64) error {
 		return fmt.Errorf("failed to delete course: %v", err)
 	}
 	return nil
-}
-
-func (m Mongo) SearchCourses(ctx context.Context, query string) ([]coursesDomain.Course, error) {
-	var courses []coursesDomain.Course
-	collection := m.client.Database(m.database).Collection(m.collection)
-	cursor, err := collection.Find(ctx, bson.M{
-		"$or": []bson.M{
-			{"name": bson.M{"$regex": query, "$options": "i"}},
-			{"category": bson.M{"$regex": query, "$options": "i"}},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to search courses: %v", err)
-	}
-	if err := cursor.All(ctx, &courses); err != nil {
-		return nil, fmt.Errorf("failed to decode courses: %v", err)
-	}
-	return courses, nil
-}
-
-func (m Mongo) GetCoursesByUserID(ctx context.Context, userID int64) ([]coursesDomain.Course, error) {
-	// Implementar la lógica para obtener cursos por ID de usuario
-	return []coursesDomain.Course{}, nil
 }
