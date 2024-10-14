@@ -7,6 +7,7 @@ import (
 	"time"
 
 	coursesController "courses-api/controllers/courses"
+	commentsRepositories "courses-api/repositories"
 	coursesRepositories "courses-api/repositories"
 	coursesRouter "courses-api/router/courses"
 	coursesServices "courses-api/services/courses"
@@ -46,12 +47,16 @@ func main() {
 		log.Fatalf("Error al conectar con MongoDB: %v", err)
 	}
 
-	// Inicializar el contador basado en el último ID en la colección
+	// Inicializar el contador de cursos
 	coursesRepositories.InitializeCounter(client, mongoConfig.Database, mongoConfig.Collection)
+
+	// Inicializar el contador de comentarios
+	commentsRepositories.InitializeCommentCounter(client, mongoConfig.Database, "comments")
 
 	// Crear instancias del repositorio, servicio y controlador
 	courseRepo := coursesRepositories.NewMongo(mongoConfig)
-	courseService := coursesServices.NewService(courseRepo)
+	commentRepo := commentsRepositories.NewCommentsMongo(client, mongoConfig.Database, "comments")
+	courseService := coursesServices.NewService(courseRepo, commentRepo)
 	courseController := coursesController.NewController(courseService)
 
 	// Configurar las rutas

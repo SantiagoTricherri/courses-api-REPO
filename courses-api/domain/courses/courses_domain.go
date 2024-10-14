@@ -18,7 +18,6 @@ type CreateCourseRequest struct {
 }
 
 type UpdateCourseRequest struct {
-	ID           int64  `json:"id" binding:"required"`
 	Name         string `json:"name"`
 	Description  string `json:"description"`
 	Category     string `json:"category"`

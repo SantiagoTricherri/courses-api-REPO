@@ -20,6 +20,9 @@ func SetupRouter(courseController courses.Controller) *gin.Engine {
 		coursesGroup.GET("/:id", courseController.GetCourseByID)   // Obtener curso por ID
 		coursesGroup.PUT("/:id", courseController.UpdateCourse)    // Actualizar curso
 		coursesGroup.DELETE("/:id", courseController.DeleteCourse) // Eliminar curso
+		coursesGroup.POST("/:id/comments", courseController.AddCommentToCourse)
+		coursesGroup.GET("/:id/comments", courseController.GetCommentsByCourseID)
+
 	}
 
 	return r
