@@ -1,17 +1,16 @@
 package files
 
-/*
 import (
 	"context"
+	filesDTOs "courses-api/DTOs/files"
+	filesDomain "courses-api/domain/files"
 	"fmt"
-
-	"courses-api/domain/files" // Importar el domain de files
 )
 
 // Interface del repositorio
 type Repository interface {
-	CreateFile(ctx context.Context, file files.File) (files.File, error)
-	GetFilesByCourseID(ctx context.Context, courseID int64) ([]files.File, error)
+	CreateFile(ctx context.Context, file filesDomain.File) (filesDomain.File, error)
+	GetFilesByCourseID(ctx context.Context, courseID int64) ([]filesDomain.File, error)
 }
 
 // Servicio de archivos
@@ -25,8 +24,8 @@ func NewService(repo Repository) Service {
 }
 
 // Crear archivo
-func (s Service) CreateFile(ctx context.Context, req files.CreateFileRequestDTO) (files.FileResponseDTO, error) {
-	file := files.File{
+func (s Service) CreateFile(ctx context.Context, req filesDTOs.CreateFileRequestDTO) (filesDTOs.FileResponseDTO, error) {
+	file := filesDomain.File{
 		Name:     req.Name,
 		Content:  []byte(req.Content),
 		UserID:   req.UserID,
@@ -35,10 +34,10 @@ func (s Service) CreateFile(ctx context.Context, req files.CreateFileRequestDTO)
 
 	createdFile, err := s.repository.CreateFile(ctx, file)
 	if err != nil {
-		return files.FileResponseDTO{}, fmt.Errorf("failed to create file: %v", err)
+		return filesDTOs.FileResponseDTO{}, fmt.Errorf("failed to create file: %v", err)
 	}
 
-	return files.FileResponseDTO{
+	return filesDTOs.FileResponseDTO{
 		ID:       createdFile.ID,
 		Name:     createdFile.Name,
 		Content:  createdFile.Content,
@@ -48,15 +47,15 @@ func (s Service) CreateFile(ctx context.Context, req files.CreateFileRequestDTO)
 }
 
 // Obtener archivos por ID de curso
-func (s Service) GetFilesByCourseID(ctx context.Context, courseID int64) ([]files.FileResponseDTO, error) {
+func (s Service) GetFilesByCourseID(ctx context.Context, courseID int64) ([]filesDTOs.FileResponseDTO, error) {
 	filesData, err := s.repository.GetFilesByCourseID(ctx, courseID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get files: %v", err)
 	}
 
-	var response []files.FileResponseDTO
+	var response []filesDTOs.FileResponseDTO
 	for _, f := range filesData {
-		response = append(response, files.FileResponseDTO{
+		response = append(response, filesDTOs.FileResponseDTO{
 			ID:       f.ID,
 			Name:     f.Name,
 			Content:  f.Content,
@@ -66,4 +65,3 @@ func (s Service) GetFilesByCourseID(ctx context.Context, courseID int64) ([]file
 	}
 	return response, nil
 }
-*/

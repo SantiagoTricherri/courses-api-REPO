@@ -3,14 +3,15 @@ package router
 // SIN MIDDLWARES, VER!!
 
 import (
-	"courses-api/controllers/comments" // Ajusta el path si es necesario
-	"courses-api/controllers/courses"  // Ajusta el path si es necesario
+	"courses-api/controllers/comments"
+	"courses-api/controllers/courses"
+	"courses-api/controllers/files"
 
 	"github.com/gin-gonic/gin"
 )
 
 // Función para configurar las rutas
-func SetupRouter(courseController courses.Controller, commentController comments.Controller) *gin.Engine {
+func SetupRouter(courseController courses.Controller, commentController comments.Controller, fileController files.Controller) *gin.Engine {
 	r := gin.Default() // Sin middleware adicional
 
 	// Rutas para cursos
@@ -23,7 +24,8 @@ func SetupRouter(courseController courses.Controller, commentController comments
 		coursesGroup.DELETE("/:id", courseController.DeleteCourse) // Eliminar curso
 		coursesGroup.POST("/:id/comments", commentController.AddCommentToCourse)
 		coursesGroup.GET("/:id/comments", commentController.GetCommentsByCourseID)
-
+		coursesGroup.POST("/:id/files", fileController.CreateFile)
+		coursesGroup.GET("/:id/files", fileController.GetFilesByCourseID)
 	}
 
 	return r

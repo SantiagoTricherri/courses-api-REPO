@@ -8,11 +8,14 @@ import (
 
 	commentsController "courses-api/controllers/comments"
 	coursesController "courses-api/controllers/courses"
-	commentsRepositories "courses-api/repositories"
-	coursesRepositories "courses-api/repositories"
+	filesController "courses-api/controllers/files"
+	commentsRepositories "courses-api/repositories/comments"
+	coursesRepositories "courses-api/repositories/courses"
+	filesRepositories "courses-api/repositories/files"
 	coursesRouter "courses-api/router/courses"
 	commentsServices "courses-api/services/comments"
 	coursesServices "courses-api/services/courses"
+	filesServices "courses-api/services/files"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -55,6 +58,9 @@ func main() {
 	// Inicializar el contador de comentarios
 	commentsRepositories.InitializeCommentCounter(client, mongoConfig.Database, "comments")
 
+	// Inicializar el contador de archivos
+	filesRepositories.InitializeFileCounter(client, mongoConfig.Database, "files")
+
 	// Crear instancias del repositorio, servicio y controlador
 	courseRepo := coursesRepositories.NewMongo(mongoConfig)
 	commentRepo := commentsRepositories.NewCommentsMongo(client, mongoConfig.Database, "comments")
@@ -65,8 +71,13 @@ func main() {
 	commentsService := commentsServices.NewService(commentRepo, courseRepo)
 	commentsController := commentsController.NewController(commentsService)
 
+	// Crear instancias para archivos
+	fileRepo := filesRepositories.NewMongo(client, mongoConfig.Database, "files")
+	fileService := filesServices.NewService(fileRepo)
+	fileController := filesController.NewController(fileService)
+
 	// Configurar las rutas
-	router := coursesRouter.SetupRouter(courseController, commentsController)
+	router := coursesRouter.SetupRouter(courseController, commentsController, fileController)
 
 	// Leer el puerto desde las variables de entorno
 	port := os.Getenv("PORT")

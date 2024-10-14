@@ -1,6 +1,5 @@
 package files
 
-/*
 // File representa un archivo cargado
 type File struct {
 	ID       int64  `bson:"id"`
@@ -9,4 +8,3 @@ type File struct {
 	UserID   int64  `bson:"user_id"`
 	CourseID int64  `bson:"course_id"`
 }
-*/

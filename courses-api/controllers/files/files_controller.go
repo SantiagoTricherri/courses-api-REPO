@@ -1,21 +1,20 @@
 package files
 
-/*
 import (
 	"context"
 	"encoding/base64"
 	"net/http"
 	"strconv"
 
-	"courses-api/domain/files" // Importar el domain de files
+	filesDTOs "courses-api/DTOs/files" // Importamos los DTOs de archivos
 
 	"github.com/gin-gonic/gin"
 )
 
 // Interface del servicio de archivos
 type Service interface {
-	CreateFile(ctx context.Context, req files.CreateFileRequestDTO) (files.FileResponseDTO, error)
-	GetFilesByCourseID(ctx context.Context, courseID int64) ([]files.FileResponseDTO, error)
+	CreateFile(ctx context.Context, req filesDTOs.CreateFileRequestDTO) (filesDTOs.FileResponseDTO, error)
+	GetFilesByCourseID(ctx context.Context, courseID int64) ([]filesDTOs.FileResponseDTO, error)
 }
 
 // Controller de archivos
@@ -30,11 +29,20 @@ func NewController(service Service) Controller {
 
 // Crear un archivo
 func (ctrl Controller) CreateFile(ctx *gin.Context) {
-	var req files.CreateFileRequestDTO
+	courseID, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID de curso inválido en la URL"})
+		return
+	}
+
+	var req filesDTOs.CreateFileRequestDTO
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Formato inválido: " + err.Error()})
 		return
 	}
+
+	// Asignar el courseID de la URL al DTO
+	req.CourseID = courseID
 
 	decodedContent, err := base64.StdEncoding.DecodeString(req.Content)
 	if err != nil {
@@ -53,9 +61,9 @@ func (ctrl Controller) CreateFile(ctx *gin.Context) {
 
 // Obtener archivos por ID de curso
 func (ctrl Controller) GetFilesByCourseID(ctx *gin.Context) {
-	courseID, err := strconv.ParseInt(ctx.Param("courseID"), 10, 64)
+	courseID, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID de curso inválido en la URL"})
 		return
 	}
 
@@ -66,4 +74,3 @@ func (ctrl Controller) GetFilesByCourseID(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, files)
 }
-*/

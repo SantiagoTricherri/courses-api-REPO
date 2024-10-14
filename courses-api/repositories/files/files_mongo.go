@@ -1,14 +1,22 @@
 package files
 
-/*
 import (
 	"context"
 	"fmt"
+	"log"
+	"sync"
 
-	"courses-api/domain/files" // Importar el domain de files
+	"courses-api/domain/files"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+// Configuración del mutex y contador en memoria
+var (
+	fileCounter   int64
+	fileCounterMu sync.Mutex
 )
 
 // Repositorio MongoDB para archivos
@@ -27,8 +35,35 @@ func NewMongo(client *mongo.Client, db, collection string) Mongo {
 	}
 }
 
+// Inicializa el contador en función del último ID en la colección
+func InitializeFileCounter(mongoClient *mongo.Client, dbName, collectionName string) {
+	collection := mongoClient.Database(dbName).Collection(collectionName)
+	var lastFile files.File
+
+	// Buscar el archivo con el ID más alto
+	opts := options.FindOne().SetSort(bson.D{{Key: "id", Value: -1}})
+	err := collection.FindOne(context.Background(), bson.M{}, opts).Decode(&lastFile)
+	if err != nil {
+		log.Printf("No se encontró un archivo existente: %v. Iniciando el contador en 0.", err)
+		fileCounter = 0
+	} else {
+		fileCounter = lastFile.ID
+		log.Printf("Contador de archivos inicializado en: %d", fileCounter)
+	}
+}
+
+// Obtener el próximo ID de manera segura
+func getNextFileID() int64 {
+	fileCounterMu.Lock()
+	defer fileCounterMu.Unlock()
+	fileCounter++
+	return fileCounter
+}
+
 // Crear archivo
 func (m Mongo) CreateFile(ctx context.Context, file files.File) (files.File, error) {
+	file.ID = getNextFileID()
+
 	_, err := m.client.Database(m.database).Collection(m.collection).InsertOne(ctx, file)
 	if err != nil {
 		return files.File{}, fmt.Errorf("failed to insert file: %v", err)
@@ -48,4 +83,3 @@ func (m Mongo) GetFilesByCourseID(ctx context.Context, courseID int64) ([]files.
 	}
 	return filesData, nil
 }
-*/

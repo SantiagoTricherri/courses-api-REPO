@@ -1,12 +1,11 @@
 package files
 
-/*
 // CreateFileRequestDTO representa la solicitud para cargar un archivo
 type CreateFileRequestDTO struct {
 	Name     string `json:"name" binding:"required"`
 	Content  string `json:"content" binding:"required"` // Base64 string
 	UserID   int64  `json:"userId" binding:"required"`
-	CourseID int64  `json:"courseId" binding:"required"`
+	CourseID int64  `json:"-"` // Este campo se llenará con el valor de la URL
 }
 
 // FileResponseDTO representa la respuesta al obtener un archivo
@@ -17,4 +16,3 @@ type FileResponseDTO struct {
 	UserID   int64  `json:"userId"`
 	CourseID int64  `json:"courseId"`
 }
-*/
