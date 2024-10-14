@@ -20,6 +20,7 @@ type Repository interface {
 type CommentsRepository interface {
 	CreateComment(ctx context.Context, comment commentsDomain.Comment) (commentsDomain.Comment, error)
 	GetCommentsByCourseID(ctx context.Context, courseID int64) ([]commentsDomain.Comment, error)
+	DeleteCommentsByCourseID(ctx context.Context, courseID int64) error // Nuevo método
 }
 
 // Service estructura para el servicio de cursos
@@ -135,6 +136,13 @@ func (s Service) UpdateCourse(ctx context.Context, id int64, req coursesDomain.U
 }
 
 func (s Service) DeleteCourse(ctx context.Context, id int64) error {
+	// Primero, eliminamos los comentarios asociados al curso
+	err := s.commentsRepository.DeleteCommentsByCourseID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("error al eliminar los comentarios del curso: %v", err)
+	}
+
+	// Luego, eliminamos el curso
 	return s.repository.DeleteCourse(ctx, id)
 }
 
@@ -169,6 +177,12 @@ func (s Service) CreateComment(ctx context.Context, courseID int64, req comments
 }
 
 func (s Service) GetCommentsByCourseID(ctx context.Context, courseID int64) ([]commentsDomain.CommentResponse, error) {
+	// Primero, verificamos si el curso existe
+	_, err := s.repository.GetCourseByID(ctx, courseID)
+	if err != nil {
+		return nil, fmt.Errorf("el curso con ID %d no existe: %v", courseID, err)
+	}
+
 	commentsDB, err := s.commentsRepository.GetCommentsByCourseID(ctx, courseID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get comments: %v", err)

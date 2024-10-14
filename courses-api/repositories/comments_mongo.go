@@ -84,3 +84,15 @@ func (m *CommentsMongo) GetCommentsByCourseID(ctx context.Context, courseID int6
 
 	return comments, nil
 }
+
+func (m *CommentsMongo) DeleteCommentsByCourseID(ctx context.Context, courseID int64) error {
+	collection := m.client.Database(m.database).Collection(m.collection)
+
+	filter := bson.M{"course_id": courseID}
+	_, err := collection.DeleteMany(ctx, filter)
+	if err != nil {
+		return fmt.Errorf("failed to delete comments for course: %v", err)
+	}
+
+	return nil
+}
