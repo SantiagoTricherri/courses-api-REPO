@@ -6,10 +6,12 @@ import (
 	"os"
 	"time"
 
+	commentsController "courses-api/controllers/comments"
 	coursesController "courses-api/controllers/courses"
 	commentsRepositories "courses-api/repositories"
 	coursesRepositories "courses-api/repositories"
 	coursesRouter "courses-api/router/courses"
+	commentsServices "courses-api/services/comments"
 	coursesServices "courses-api/services/courses"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -56,11 +58,15 @@ func main() {
 	// Crear instancias del repositorio, servicio y controlador
 	courseRepo := coursesRepositories.NewMongo(mongoConfig)
 	commentRepo := commentsRepositories.NewCommentsMongo(client, mongoConfig.Database, "comments")
+
 	courseService := coursesServices.NewService(courseRepo, commentRepo)
 	courseController := coursesController.NewController(courseService)
 
+	commentsService := commentsServices.NewService(commentRepo, courseRepo)
+	commentsController := commentsController.NewController(commentsService)
+
 	// Configurar las rutas
-	router := coursesRouter.SetupRouter(courseController)
+	router := coursesRouter.SetupRouter(courseController, commentsController)
 
 	// Leer el puerto desde las variables de entorno
 	port := os.Getenv("PORT")

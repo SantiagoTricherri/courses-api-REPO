@@ -2,10 +2,8 @@ package courses
 
 import (
 	"context"
-	commentsDomain "courses-api/domain/comments"
 	coursesDomain "courses-api/domain/courses"
 	"fmt"
-	"time"
 )
 
 // Repository interface para las operaciones de curso
@@ -17,10 +15,9 @@ type Repository interface {
 	DeleteCourse(ctx context.Context, id int64) error
 }
 
+// CommentsRepository interface para las operaciones de comentarios
 type CommentsRepository interface {
-	CreateComment(ctx context.Context, comment commentsDomain.Comment) (commentsDomain.Comment, error)
-	GetCommentsByCourseID(ctx context.Context, courseID int64) ([]commentsDomain.Comment, error)
-	DeleteCommentsByCourseID(ctx context.Context, courseID int64) error // Nuevo método
+	DeleteCommentsByCourseID(ctx context.Context, courseID int64) error
 }
 
 // Service estructura para el servicio de cursos
@@ -143,62 +140,10 @@ func (s Service) DeleteCourse(ctx context.Context, id int64) error {
 	}
 
 	// Luego, eliminamos el curso
-	return s.repository.DeleteCourse(ctx, id)
-}
-
-func (s Service) CreateComment(ctx context.Context, courseID int64, req commentsDomain.CreateCommentRequest) (commentsDomain.CommentResponse, error) {
-	// Primero, verificamos si el curso existe
-	_, err := s.repository.GetCourseByID(ctx, courseID)
+	err = s.repository.DeleteCourse(ctx, id)
 	if err != nil {
-		return commentsDomain.CommentResponse{}, fmt.Errorf("el curso con ID %d no existe: %v", courseID, err)
+		return fmt.Errorf("error al eliminar el curso: %v", err)
 	}
 
-	comment := commentsDomain.Comment{
-		CourseID:  courseID,
-		UserID:    req.UserID,
-		Content:   req.Content,
-		Rating:    req.Rating,
-		CreatedAt: time.Now().Unix(),
-	}
-
-	createdComment, err := s.commentsRepository.CreateComment(ctx, comment)
-	if err != nil {
-		return commentsDomain.CommentResponse{}, fmt.Errorf("error al crear el comentario: %v", err)
-	}
-
-	return commentsDomain.CommentResponse{
-		ID:        createdComment.ID,
-		CourseID:  createdComment.CourseID,
-		UserID:    createdComment.UserID,
-		Content:   createdComment.Content,
-		Rating:    createdComment.Rating,
-		CreatedAt: createdComment.CreatedAt,
-	}, nil
-}
-
-func (s Service) GetCommentsByCourseID(ctx context.Context, courseID int64) ([]commentsDomain.CommentResponse, error) {
-	// Primero, verificamos si el curso existe
-	_, err := s.repository.GetCourseByID(ctx, courseID)
-	if err != nil {
-		return nil, fmt.Errorf("el curso con ID %d no existe: %v", courseID, err)
-	}
-
-	commentsDB, err := s.commentsRepository.GetCommentsByCourseID(ctx, courseID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get comments: %v", err)
-	}
-
-	var commentsResponse []commentsDomain.CommentResponse
-	for _, comment := range commentsDB {
-		commentsResponse = append(commentsResponse, commentsDomain.CommentResponse{
-			ID:        comment.ID,
-			CourseID:  comment.CourseID,
-			UserID:    comment.UserID,
-			Content:   comment.Content,
-			Rating:    comment.Rating,
-			CreatedAt: comment.CreatedAt,
-		})
-	}
-
-	return commentsResponse, nil
+	return nil
 }
