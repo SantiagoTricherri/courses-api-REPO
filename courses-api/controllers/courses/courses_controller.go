@@ -2,6 +2,7 @@ package courses
 
 import (
 	"context"
+	coursesDTO "courses-api/DTOs/courses"
 	coursesDomain "courses-api/domain/courses"
 	"net/http"
 	"strconv"
@@ -30,17 +31,41 @@ func NewController(service Service) Controller {
 
 // Crear curso
 func (ctrl Controller) CreateCourse(ctx *gin.Context) {
-	var req coursesDomain.CreateCourseRequest
+	var req coursesDTO.CreateCourseRequestDTO
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Formato inválido: " + err.Error()})
 		return
 	}
-	course, err := ctrl.service.CreateCourse(ctx.Request.Context(), req)
+
+	domainReq := coursesDomain.CreateCourseRequest{
+		Name:         req.Name,
+		Description:  req.Description,
+		Category:     req.Category,
+		Duration:     req.Duration,
+		InstructorID: int64(req.InstructorID),
+		ImageID:      req.ImageID,
+		Capacity:     req.Capacity,
+	}
+
+	course, err := ctrl.service.CreateCourse(ctx.Request.Context(), domainReq)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error al crear curso: " + err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, course)
+
+	response := coursesDTO.CourseResponseDTO{
+		ID:           uint(course.ID),
+		Name:         course.Name,
+		Description:  course.Description,
+		Category:     course.Category,
+		Duration:     course.Duration,
+		InstructorID: uint(course.InstructorID),
+		ImageID:      course.ImageID,
+		Capacity:     course.Capacity,
+		Rating:       course.Rating,
+	}
+
+	ctx.JSON(http.StatusOK, response)
 }
 
 // Obtener todos los cursos
@@ -76,19 +101,42 @@ func (ctrl Controller) UpdateCourse(ctx *gin.Context) {
 		return
 	}
 
-	var req coursesDomain.UpdateCourseRequest
+	var req coursesDTO.UpdateCourseRequestDTO
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Formato inválido: " + err.Error()})
 		return
 	}
 
-	// En lugar de asignar el ID a req, lo pasamos directamente al método UpdateCourse
-	course, err := ctrl.service.UpdateCourse(ctx.Request.Context(), id, req)
+	domainReq := coursesDomain.UpdateCourseRequest{
+		Name:         req.Name,
+		Description:  req.Description,
+		Category:     req.Category,
+		Duration:     req.Duration,
+		InstructorID: int64(req.InstructorID),
+		ImageID:      req.ImageID,
+		Capacity:     req.Capacity,
+		Rating:       req.Rating,
+	}
+
+	course, err := ctrl.service.UpdateCourse(ctx.Request.Context(), id, domainReq)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar curso: " + err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, course)
+
+	response := coursesDTO.CourseResponseDTO{
+		ID:           uint(course.ID),
+		Name:         course.Name,
+		Description:  course.Description,
+		Category:     course.Category,
+		Duration:     course.Duration,
+		InstructorID: uint(course.InstructorID),
+		ImageID:      course.ImageID,
+		Capacity:     course.Capacity,
+		Rating:       course.Rating,
+	}
+
+	ctx.JSON(http.StatusOK, response)
 }
 
 // Eliminar curso

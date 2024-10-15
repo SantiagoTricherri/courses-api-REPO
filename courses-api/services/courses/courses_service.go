@@ -41,6 +41,9 @@ func (s Service) CreateCourse(ctx context.Context, req coursesDomain.CreateCours
 		Category:     req.Category,
 		Duration:     req.Duration,
 		InstructorID: req.InstructorID,
+		ImageID:      req.ImageID,
+		Capacity:     req.Capacity,
+		Rating:       0, // Inicialmente, el rating es 0
 	}
 
 	createdCourse, err := s.repository.CreateCourse(ctx, course)
@@ -55,6 +58,9 @@ func (s Service) CreateCourse(ctx context.Context, req coursesDomain.CreateCours
 		Category:     createdCourse.Category,
 		Duration:     createdCourse.Duration,
 		InstructorID: createdCourse.InstructorID,
+		ImageID:      createdCourse.ImageID,
+		Capacity:     createdCourse.Capacity,
+		Rating:       createdCourse.Rating,
 	}, nil
 }
 
@@ -73,6 +79,9 @@ func (s Service) GetCourses(ctx context.Context) ([]coursesDomain.CourseResponse
 			Category:     course.Category,
 			Duration:     course.Duration,
 			InstructorID: course.InstructorID,
+			ImageID:      course.ImageID,
+			Capacity:     course.Capacity,
+			Rating:       course.Rating,
 		})
 	}
 
@@ -92,6 +101,9 @@ func (s Service) GetCourseByID(ctx context.Context, id int64) (coursesDomain.Cou
 		Category:     course.Category,
 		Duration:     course.Duration,
 		InstructorID: course.InstructorID,
+		ImageID:      course.ImageID,
+		Capacity:     course.Capacity,
+		Rating:       course.Rating,
 	}, nil
 }
 
@@ -116,6 +128,13 @@ func (s Service) UpdateCourse(ctx context.Context, id int64, req coursesDomain.U
 	if req.InstructorID != 0 {
 		course.InstructorID = req.InstructorID
 	}
+	if req.ImageID != "" {
+		course.ImageID = req.ImageID
+	}
+	if req.Capacity != 0 {
+		course.Capacity = req.Capacity
+	}
+	// No actualizamos el rating aquí, ya que se actualizará con los comentarios
 
 	updatedCourse, err := s.repository.UpdateCourse(ctx, course)
 	if err != nil {
@@ -129,6 +148,9 @@ func (s Service) UpdateCourse(ctx context.Context, id int64, req coursesDomain.U
 		Category:     updatedCourse.Category,
 		Duration:     updatedCourse.Duration,
 		InstructorID: updatedCourse.InstructorID,
+		ImageID:      updatedCourse.ImageID,
+		Capacity:     updatedCourse.Capacity,
+		Rating:       updatedCourse.Rating,
 	}, nil
 }
 
@@ -143,6 +165,22 @@ func (s Service) DeleteCourse(ctx context.Context, id int64) error {
 	err = s.repository.DeleteCourse(ctx, id)
 	if err != nil {
 		return fmt.Errorf("error al eliminar el curso: %v", err)
+	}
+
+	return nil
+}
+
+// Agregar este método para actualizar el rating del curso
+func (s Service) UpdateCourseRating(ctx context.Context, courseID int64, newRating float64) error {
+	course, err := s.repository.GetCourseByID(ctx, courseID)
+	if err != nil {
+		return fmt.Errorf("failed to get course: %v", err)
+	}
+
+	course.Rating = newRating
+	_, err = s.repository.UpdateCourse(ctx, course)
+	if err != nil {
+		return fmt.Errorf("failed to update course rating: %v", err)
 	}
 
 	return nil

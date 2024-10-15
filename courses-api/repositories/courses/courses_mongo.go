@@ -91,6 +91,7 @@ func getNextID() int64 {
 // Crear curso con el ID generado en memoria
 func (m Mongo) CreateCourse(ctx context.Context, course coursesDomain.Course) (coursesDomain.Course, error) {
 	course.ID = getNextID()
+	course.Rating = 0 // Inicializar el rating en 0
 
 	collection := m.client.Database(m.database).Collection(m.collection)
 	_, err := collection.InsertOne(ctx, course)
@@ -139,6 +140,17 @@ func (m Mongo) DeleteCourse(ctx context.Context, id int64) error {
 	_, err := collection.DeleteOne(ctx, bson.M{"id": id})
 	if err != nil {
 		return fmt.Errorf("failed to delete course: %v", err)
+	}
+	return nil
+}
+
+func (m Mongo) UpdateCourseRating(ctx context.Context, courseID int64, newRating float64) error {
+	collection := m.client.Database(m.database).Collection(m.collection)
+	filter := bson.M{"id": courseID}
+	update := bson.M{"$set": bson.M{"rating": newRating}}
+	_, err := collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return fmt.Errorf("failed to update course rating: %v", err)
 	}
 	return nil
 }

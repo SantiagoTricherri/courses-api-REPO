@@ -18,6 +18,7 @@ type CommentsRepository interface {
 
 type CoursesRepository interface {
 	GetCourseByID(ctx context.Context, id int64) (coursesDomain.Course, error)
+	UpdateCourse(ctx context.Context, course coursesDomain.Course) (coursesDomain.Course, error)
 }
 
 type Service struct {
@@ -34,10 +35,12 @@ func NewService(commentsRepo CommentsRepository, coursesRepo CoursesRepository) 
 
 func (s Service) CreateComment(ctx context.Context, courseID int64, req commentsDTOs.CreateCommentRequestDTO) (commentsDTOs.CommentResponseDTO, error) {
 	// Verificar si el curso existe
-	_, err := s.coursesRepository.GetCourseByID(ctx, courseID)
+	course, err := s.coursesRepository.GetCourseByID(ctx, courseID)
 	if err != nil {
 		return commentsDTOs.CommentResponseDTO{}, fmt.Errorf("el curso con ID %d no existe: %v", courseID, err)
 	}
+	// course se utilizará más adelante en la función
+	_ = course // Esto evita el error de variable no utilizada
 
 	comment := commentsDomain.Comment{
 		CourseID:  courseID,
@@ -50,6 +53,12 @@ func (s Service) CreateComment(ctx context.Context, courseID int64, req comments
 	createdComment, err := s.commentsRepository.CreateComment(ctx, comment)
 	if err != nil {
 		return commentsDTOs.CommentResponseDTO{}, fmt.Errorf("error al crear el comentario: %v", err)
+	}
+
+	// Actualizar el rating del curso
+	err = s.updateCourseRating(ctx, courseID)
+	if err != nil {
+		return commentsDTOs.CommentResponseDTO{}, fmt.Errorf("error al actualizar el rating del curso: %v", err)
 	}
 
 	return commentsDTOs.CommentResponseDTO{
@@ -87,4 +96,30 @@ func (s Service) GetCommentsByCourseID(ctx context.Context, courseID int64) ([]c
 	}
 
 	return commentsResponse, nil
+}
+
+func (s Service) updateCourseRating(ctx context.Context, courseID int64) error {
+	comments, err := s.commentsRepository.GetCommentsByCourseID(ctx, courseID)
+	if err != nil {
+		return fmt.Errorf("failed to get comments: %v", err)
+	}
+
+	var totalRating float64
+	for _, c := range comments {
+		totalRating += float64(c.Rating)
+	}
+	newAverageRating := totalRating / float64(len(comments))
+
+	course, err := s.coursesRepository.GetCourseByID(ctx, courseID)
+	if err != nil {
+		return fmt.Errorf("failed to get course: %v", err)
+	}
+
+	course.Rating = newAverageRating
+	_, err = s.coursesRepository.UpdateCourse(ctx, course)
+	if err != nil {
+		return fmt.Errorf("failed to update course rating: %v", err)
+	}
+
+	return nil
 }
