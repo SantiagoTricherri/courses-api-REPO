@@ -5,20 +5,20 @@ import (
 	"fmt"
 	"time"
 
-	commentsDTOs "courses-api/DTOs/comments"
+	commentsDAO "courses-api/DAO/comments"
+	coursesDAO "courses-api/DAO/courses"
 	commentsDomain "courses-api/domain/comments"
-	coursesDomain "courses-api/domain/courses"
 )
 
 type CommentsRepository interface {
-	CreateComment(ctx context.Context, comment commentsDomain.Comment) (commentsDomain.Comment, error)
-	GetCommentsByCourseID(ctx context.Context, courseID int64) ([]commentsDomain.Comment, error)
+	CreateComment(ctx context.Context, comment commentsDAO.Comment) (commentsDAO.Comment, error)
+	GetCommentsByCourseID(ctx context.Context, courseID int64) ([]commentsDAO.Comment, error)
 	DeleteCommentsByCourseID(ctx context.Context, courseID int64) error
 }
 
 type CoursesRepository interface {
-	GetCourseByID(ctx context.Context, id int64) (coursesDomain.Course, error)
-	UpdateCourse(ctx context.Context, course coursesDomain.Course) (coursesDomain.Course, error)
+	GetCourseByID(ctx context.Context, id int64) (coursesDAO.Course, error)
+	UpdateCourse(ctx context.Context, course coursesDAO.Course) (coursesDAO.Course, error)
 }
 
 type Service struct {
@@ -33,16 +33,14 @@ func NewService(commentsRepo CommentsRepository, coursesRepo CoursesRepository) 
 	}
 }
 
-func (s Service) CreateComment(ctx context.Context, courseID int64, req commentsDTOs.CreateCommentRequestDTO) (commentsDTOs.CommentResponseDTO, error) {
+func (s Service) CreateComment(ctx context.Context, courseID int64, req commentsDomain.CreateCommentRequest) (commentsDomain.CommentResponse, error) {
 	// Verificar si el curso existe
-	course, err := s.coursesRepository.GetCourseByID(ctx, courseID)
+	_, err := s.coursesRepository.GetCourseByID(ctx, courseID)
 	if err != nil {
-		return commentsDTOs.CommentResponseDTO{}, fmt.Errorf("el curso con ID %d no existe: %v", courseID, err)
+		return commentsDomain.CommentResponse{}, fmt.Errorf("el curso con ID %d no existe: %v", courseID, err)
 	}
-	// course se utilizará más adelante en la función
-	_ = course // Esto evita el error de variable no utilizada
 
-	comment := commentsDomain.Comment{
+	comment := commentsDAO.Comment{
 		CourseID:  courseID,
 		UserID:    req.UserID,
 		Content:   req.Content,
@@ -52,16 +50,16 @@ func (s Service) CreateComment(ctx context.Context, courseID int64, req comments
 
 	createdComment, err := s.commentsRepository.CreateComment(ctx, comment)
 	if err != nil {
-		return commentsDTOs.CommentResponseDTO{}, fmt.Errorf("error al crear el comentario: %v", err)
+		return commentsDomain.CommentResponse{}, fmt.Errorf("error al crear el comentario: %v", err)
 	}
 
 	// Actualizar el rating del curso
 	err = s.updateCourseRating(ctx, courseID)
 	if err != nil {
-		return commentsDTOs.CommentResponseDTO{}, fmt.Errorf("error al actualizar el rating del curso: %v", err)
+		return commentsDomain.CommentResponse{}, fmt.Errorf("error al actualizar el rating del curso: %v", err)
 	}
 
-	return commentsDTOs.CommentResponseDTO{
+	return commentsDomain.CommentResponse{
 		ID:        createdComment.ID,
 		CourseID:  createdComment.CourseID,
 		UserID:    createdComment.UserID,
@@ -71,7 +69,7 @@ func (s Service) CreateComment(ctx context.Context, courseID int64, req comments
 	}, nil
 }
 
-func (s Service) GetCommentsByCourseID(ctx context.Context, courseID int64) ([]commentsDTOs.CommentResponseDTO, error) {
+func (s Service) GetCommentsByCourseID(ctx context.Context, courseID int64) ([]commentsDomain.CommentResponse, error) {
 	// Verificar si el curso existe
 	_, err := s.coursesRepository.GetCourseByID(ctx, courseID)
 	if err != nil {
@@ -83,9 +81,9 @@ func (s Service) GetCommentsByCourseID(ctx context.Context, courseID int64) ([]c
 		return nil, fmt.Errorf("error al obtener los comentarios: %v", err)
 	}
 
-	var commentsResponse []commentsDTOs.CommentResponseDTO
+	var commentsResponse []commentsDomain.CommentResponse
 	for _, comment := range commentsDB {
-		commentsResponse = append(commentsResponse, commentsDTOs.CommentResponseDTO{
+		commentsResponse = append(commentsResponse, commentsDomain.CommentResponse{
 			ID:        comment.ID,
 			CourseID:  comment.CourseID,
 			UserID:    comment.UserID,
@@ -112,10 +110,11 @@ func (s Service) updateCourseRating(ctx context.Context, courseID int64) error {
 
 	course, err := s.coursesRepository.GetCourseByID(ctx, courseID)
 	if err != nil {
-		return fmt.Errorf("failed to get course: %v", err)
+		return fmt.Errorf("error al obtener el curso: %v", err)
 	}
 
 	course.Rating = newAverageRating
+
 	_, err = s.coursesRepository.UpdateCourse(ctx, course)
 	if err != nil {
 		return fmt.Errorf("failed to update course rating: %v", err)

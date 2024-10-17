@@ -6,7 +6,7 @@ import (
 	"log"
 	"sync"
 
-	commentsDomain "courses-api/domain/comments"
+	commentsDAO "courses-api/DAO/comments"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -35,7 +35,7 @@ func NewCommentsMongo(client *mongo.Client, database, collection string) *Commen
 // InitializeCommentCounter inicializa el contador de comentarios
 func InitializeCommentCounter(client *mongo.Client, dbName, collectionName string) {
 	collection := client.Database(dbName).Collection(collectionName)
-	var lastComment commentsDomain.Comment
+	var lastComment commentsDAO.Comment
 
 	opts := options.FindOne().SetSort(bson.D{{Key: "id", Value: -1}})
 	err := collection.FindOne(context.Background(), bson.M{}, opts).Decode(&lastComment)
@@ -56,18 +56,18 @@ func getNextCommentID() int64 {
 	return commentCounter
 }
 
-func (m *CommentsMongo) CreateComment(ctx context.Context, comment commentsDomain.Comment) (commentsDomain.Comment, error) {
+func (m *CommentsMongo) CreateComment(ctx context.Context, comment commentsDAO.Comment) (commentsDAO.Comment, error) {
 	comment.ID = getNextCommentID()
 
 	collection := m.client.Database(m.database).Collection(m.collection)
 	_, err := collection.InsertOne(ctx, comment)
 	if err != nil {
-		return commentsDomain.Comment{}, fmt.Errorf("failed to insert comment: %v", err)
+		return commentsDAO.Comment{}, fmt.Errorf("failed to insert comment: %v", err)
 	}
 	return comment, nil
 }
 
-func (m *CommentsMongo) GetCommentsByCourseID(ctx context.Context, courseID int64) ([]commentsDomain.Comment, error) {
+func (m *CommentsMongo) GetCommentsByCourseID(ctx context.Context, courseID int64) ([]commentsDAO.Comment, error) {
 	collection := m.client.Database(m.database).Collection(m.collection)
 
 	filter := bson.M{"course_id": courseID}
@@ -77,7 +77,7 @@ func (m *CommentsMongo) GetCommentsByCourseID(ctx context.Context, courseID int6
 	}
 	defer cursor.Close(ctx)
 
-	var comments []commentsDomain.Comment
+	var comments []commentsDAO.Comment
 	if err = cursor.All(ctx, &comments); err != nil {
 		return nil, fmt.Errorf("failed to decode comments: %v", err)
 	}

@@ -1,17 +1,5 @@
 package courses
 
-type Course struct {
-	ID           int64   `bson:"id"`
-	Name         string  `bson:"name"`
-	Description  string  `bson:"description"`
-	Category     string  `bson:"category"`
-	Duration     string  `bson:"duration"`
-	InstructorID int64   `bson:"instructor_id"`
-	ImageID      string  `bson:"image_id"`
-	Capacity     int     `bson:"capacity"`
-	Rating       float64 `bson:"rating"`
-}
-
 type CreateCourseRequest struct {
 	Name         string `json:"name" binding:"required"`
 	Description  string `json:"description" binding:"required"`
@@ -43,4 +31,8 @@ type CourseResponse struct {
 	ImageID      string  `json:"image_id"`
 	Capacity     int     `json:"capacity"`
 	Rating       float64 `json:"rating"`
+}
+type CursosNew struct {
+	Operation string `json:"operation"`
+	CourseID  int64  `json:"course_id"`
 }

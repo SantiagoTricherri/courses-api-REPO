@@ -5,14 +5,14 @@ import (
 	"net/http"
 	"strconv"
 
-	commentsDTOs "courses-api/DTOs/comments"
+	commentsDomain "courses-api/domain/comments"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Service interface {
-	CreateComment(ctx context.Context, courseID int64, req commentsDTOs.CreateCommentRequestDTO) (commentsDTOs.CommentResponseDTO, error)
-	GetCommentsByCourseID(ctx context.Context, courseID int64) ([]commentsDTOs.CommentResponseDTO, error)
+	CreateComment(ctx context.Context, courseID int64, req commentsDomain.CreateCommentRequest) (commentsDomain.CommentResponse, error)
+	GetCommentsByCourseID(ctx context.Context, courseID int64) ([]commentsDomain.CommentResponse, error)
 }
 
 type Controller struct {
@@ -30,7 +30,7 @@ func (ctrl Controller) AddCommentToCourse(ctx *gin.Context) {
 		return
 	}
 
-	var req commentsDTOs.CreateCommentRequestDTO
+	var req commentsDomain.CreateCommentRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Formato inválido: " + err.Error()})
 		return

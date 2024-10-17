@@ -4,6 +4,8 @@ go 1.22.1
 
 require (
 	github.com/gin-gonic/gin v1.10.0
+	github.com/rabbitmq/amqp091-go v1.10.0
+	github.com/streadway/amqp v1.1.0
 	go.mongodb.org/mongo-driver v1.17.1
 )
 

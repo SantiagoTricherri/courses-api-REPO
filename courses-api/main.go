@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"courses-api/clients/rabbit"
 	commentsController "courses-api/controllers/comments"
 	coursesController "courses-api/controllers/courses"
 	filesController "courses-api/controllers/files"
@@ -61,15 +62,33 @@ func main() {
 	// Inicializar el contador de archivos
 	filesRepositories.InitializeFileCounter(client, mongoConfig.Database, "files")
 
-	// Crear instancias del repositorio, servicio y controlador
+	// Configurar RabbitMQ
+	rabbitConfig := rabbit.RabbitConfig{
+		Username:  "tu_usuario",
+		Password:  "tu_contraseña",
+		Host:      "localhost",
+		Port:      "5672",
+		QueueName: "courses_queue",
+	}
+	rabbitQueue := rabbit.NewRabbit(rabbitConfig)
+
+	// Crear instancias del repositorio
 	courseRepo := coursesRepositories.NewMongo(mongoConfig)
 	commentRepo := commentsRepositories.NewCommentsMongo(client, mongoConfig.Database, "comments")
 
-	courseService := coursesServices.NewService(courseRepo, commentRepo)
+	// Crear el servicio de cursos
+	courseService := coursesServices.NewService(
+		courseRepo,
+		commentRepo,
+		rabbitQueue,
+	)
+
+	// Crear el controlador de cursos
 	courseController := coursesController.NewController(courseService)
 
-	commentsService := commentsServices.NewService(commentRepo, courseRepo)
-	commentsController := commentsController.NewController(commentsService)
+	// Crear instancias para comentarios
+	commentService := commentsServices.NewService(commentRepo, courseRepo)
+	commentController := commentsController.NewController(commentService)
 
 	// Crear instancias para archivos
 	fileRepo := filesRepositories.NewMongo(client, mongoConfig.Database, "files")
@@ -77,7 +96,7 @@ func main() {
 	fileController := filesController.NewController(fileService)
 
 	// Configurar las rutas
-	router := coursesRouter.SetupRouter(courseController, commentsController, fileController)
+	router := coursesRouter.SetupRouter(courseController, commentController, fileController)
 
 	// Leer el puerto desde las variables de entorno
 	port := os.Getenv("PORT")

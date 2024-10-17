@@ -6,7 +6,7 @@ import (
 	"log"
 	"sync"
 
-	"courses-api/domain/files"
+	filesDAO "courses-api/DAO/files"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -38,7 +38,7 @@ func NewMongo(client *mongo.Client, db, collection string) Mongo {
 // Inicializa el contador en función del último ID en la colección
 func InitializeFileCounter(mongoClient *mongo.Client, dbName, collectionName string) {
 	collection := mongoClient.Database(dbName).Collection(collectionName)
-	var lastFile files.File
+	var lastFile filesDAO.File
 
 	// Buscar el archivo con el ID más alto
 	opts := options.FindOne().SetSort(bson.D{{Key: "id", Value: -1}})
@@ -61,19 +61,19 @@ func getNextFileID() int64 {
 }
 
 // Crear archivo
-func (m Mongo) CreateFile(ctx context.Context, file files.File) (files.File, error) {
+func (m Mongo) CreateFile(ctx context.Context, file filesDAO.File) (filesDAO.File, error) {
 	file.ID = getNextFileID()
 
 	_, err := m.client.Database(m.database).Collection(m.collection).InsertOne(ctx, file)
 	if err != nil {
-		return files.File{}, fmt.Errorf("failed to insert file: %v", err)
+		return filesDAO.File{}, fmt.Errorf("failed to insert file: %v", err)
 	}
 	return file, nil
 }
 
 // Obtener archivos por ID de curso
-func (m Mongo) GetFilesByCourseID(ctx context.Context, courseID int64) ([]files.File, error) {
-	var filesData []files.File
+func (m Mongo) GetFilesByCourseID(ctx context.Context, courseID int64) ([]filesDAO.File, error) {
+	var filesData []filesDAO.File
 	cursor, err := m.client.Database(m.database).Collection(m.collection).Find(ctx, bson.M{"course_id": courseID})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get files: %v", err)

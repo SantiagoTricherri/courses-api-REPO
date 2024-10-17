@@ -6,15 +6,15 @@ import (
 	"net/http"
 	"strconv"
 
-	filesDTOs "courses-api/DTOs/files" // Importamos los DTOs de archivos
+	"courses-api/domain/files"
 
 	"github.com/gin-gonic/gin"
 )
 
 // Interface del servicio de archivos
 type Service interface {
-	CreateFile(ctx context.Context, req filesDTOs.CreateFileRequestDTO) (filesDTOs.FileResponseDTO, error)
-	GetFilesByCourseID(ctx context.Context, courseID int64) ([]filesDTOs.FileResponseDTO, error)
+	CreateFile(ctx context.Context, req files.CreateFileRequest) (files.FileResponse, error)
+	GetFilesByCourseID(ctx context.Context, courseID int64) ([]files.FileResponse, error)
 }
 
 // Controller de archivos
@@ -35,13 +35,13 @@ func (ctrl Controller) CreateFile(ctx *gin.Context) {
 		return
 	}
 
-	var req filesDTOs.CreateFileRequestDTO
+	var req files.CreateFileRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Formato inválido: " + err.Error()})
 		return
 	}
 
-	// Asignar el courseID de la URL al DTO
+	// Asignar el courseID de la URL al request
 	req.CourseID = courseID
 
 	decodedContent, err := base64.StdEncoding.DecodeString(req.Content)

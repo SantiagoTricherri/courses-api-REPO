@@ -2,7 +2,7 @@ package repositories
 
 import (
 	"context"
-	coursesDomain "courses-api/domain/courses"
+	coursesDAO "courses-api/DAO/courses"
 	"fmt"
 	"log"
 	"sync"
@@ -66,7 +66,7 @@ var (
 // Inicializa el contador en función del último ID en la colección
 func InitializeCounter(mongoClient *mongo.Client, dbName, collectionName string) {
 	collection := mongoClient.Database(dbName).Collection(collectionName)
-	var lastCourse coursesDomain.Course
+	var lastCourse coursesDAO.Course
 
 	// Buscar el curso con el ID más alto
 	opts := options.FindOne().SetSort(bson.D{{Key: "id", Value: -1}})
@@ -89,20 +89,20 @@ func getNextID() int64 {
 }
 
 // Crear curso con el ID generado en memoria
-func (m Mongo) CreateCourse(ctx context.Context, course coursesDomain.Course) (coursesDomain.Course, error) {
+func (m Mongo) CreateCourse(ctx context.Context, course coursesDAO.Course) (coursesDAO.Course, error) {
 	course.ID = getNextID()
 	course.Rating = 0 // Inicializar el rating en 0
 
 	collection := m.client.Database(m.database).Collection(m.collection)
 	_, err := collection.InsertOne(ctx, course)
 	if err != nil {
-		return coursesDomain.Course{}, fmt.Errorf("failed to insert course: %v", err)
+		return coursesDAO.Course{}, fmt.Errorf("failed to insert course: %v", err)
 	}
 	return course, nil
 }
 
-func (m Mongo) GetCourses(ctx context.Context) ([]coursesDomain.Course, error) {
-	var courses []coursesDomain.Course
+func (m Mongo) GetCourses(ctx context.Context) ([]coursesDAO.Course, error) {
+	var courses []coursesDAO.Course
 	collection := m.client.Database(m.database).Collection(m.collection)
 	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
@@ -114,23 +114,23 @@ func (m Mongo) GetCourses(ctx context.Context) ([]coursesDomain.Course, error) {
 	return courses, nil
 }
 
-func (m Mongo) GetCourseByID(ctx context.Context, id int64) (coursesDomain.Course, error) {
-	var course coursesDomain.Course
+func (m Mongo) GetCourseByID(ctx context.Context, id int64) (coursesDAO.Course, error) {
+	var course coursesDAO.Course
 	collection := m.client.Database(m.database).Collection(m.collection)
 	err := collection.FindOne(ctx, bson.M{"id": id}).Decode(&course)
 	if err != nil {
-		return coursesDomain.Course{}, fmt.Errorf("failed to find course: %v", err)
+		return coursesDAO.Course{}, fmt.Errorf("failed to find course: %v", err)
 	}
 	return course, nil
 }
 
-func (m Mongo) UpdateCourse(ctx context.Context, course coursesDomain.Course) (coursesDomain.Course, error) {
+func (m Mongo) UpdateCourse(ctx context.Context, course coursesDAO.Course) (coursesDAO.Course, error) {
 	collection := m.client.Database(m.database).Collection(m.collection)
 	filter := bson.M{"id": course.ID}
 	update := bson.M{"$set": course}
 	_, err := collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		return coursesDomain.Course{}, fmt.Errorf("failed to update course: %v", err)
+		return coursesDAO.Course{}, fmt.Errorf("failed to update course: %v", err)
 	}
 	return course, nil
 }
