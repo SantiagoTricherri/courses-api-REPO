@@ -24,22 +24,13 @@ import (
 
 func main() {
 	// Configuración del cliente MongoDB
-	mongoConfig := coursesRepositories.MongoConfig{
-		Host:       "localhost",
-		Port:       "27017",
-		Username:   "root",
-		Password:   "root",
-		Database:   "courses-api",
-		Collection: "courses",
+	mongoURI := os.Getenv("MONGODB_URI")
+	if mongoURI == "" {
+		mongoURI = "mongodb://localhost:27017"
 	}
 
 	// Crear cliente de MongoDB
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017").SetAuth(
-		options.Credential{
-			Username: mongoConfig.Username,
-			Password: mongoConfig.Password,
-		},
-	)
+	clientOptions := options.Client().ApplyURI(mongoURI)
 	client, err := mongo.NewClient(clientOptions)
 	if err != nil {
 		log.Fatalf("Error al crear el cliente de MongoDB: %v", err)
@@ -54,27 +45,35 @@ func main() {
 	}
 
 	// Inicializar el contador de cursos
-	coursesRepositories.InitializeCounter(client, mongoConfig.Database, mongoConfig.Collection)
+	coursesRepositories.InitializeCounter(client, "courses-api", "courses")
 
 	// Inicializar el contador de comentarios
-	commentsRepositories.InitializeCommentCounter(client, mongoConfig.Database, "comments")
+	commentsRepositories.InitializeCommentCounter(client, "courses-api", "comments")
 
 	// Inicializar el contador de archivos
-	filesRepositories.InitializeFileCounter(client, mongoConfig.Database, "files")
+	filesRepositories.InitializeFileCounter(client, "courses-api", "files")
 
 	// Configurar RabbitMQ
+	rabbitURI := os.Getenv("RABBITMQ_URI")
+	if rabbitURI == "" {
+		rabbitURI = "amqp://guest:guest@localhost:5672/"
+	}
 	rabbitConfig := rabbit.RabbitConfig{
-		Username:  "tu_usuario",
-		Password:  "tu_contraseña",
-		Host:      "localhost",
-		Port:      "5672",
+		URI:       rabbitURI,
 		QueueName: "courses_queue",
 	}
 	rabbitQueue := rabbit.NewRabbit(rabbitConfig)
 
 	// Crear instancias del repositorio
-	courseRepo := coursesRepositories.NewMongo(mongoConfig)
-	commentRepo := commentsRepositories.NewCommentsMongo(client, mongoConfig.Database, "comments")
+	courseRepo := coursesRepositories.NewMongo(coursesRepositories.MongoConfig{
+		Host:       "mongodb", // Nombre del servicio en docker-compose
+		Port:       "27017",
+		Username:   "root",
+		Password:   "root",
+		Database:   "courses-api",
+		Collection: "courses",
+	})
+	commentRepo := commentsRepositories.NewCommentsMongo(client, "courses-api", "comments")
 
 	// Crear el servicio de cursos
 	courseService := coursesServices.NewService(
@@ -91,7 +90,7 @@ func main() {
 	commentController := commentsController.NewController(commentService)
 
 	// Crear instancias para archivos
-	fileRepo := filesRepositories.NewMongo(client, mongoConfig.Database, "files")
+	fileRepo := filesRepositories.NewMongo(client, "courses-api", "files")
 	fileService := filesServices.NewService(fileRepo)
 	fileController := filesController.NewController(fileService)
 

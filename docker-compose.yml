@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  courses-api:
+    build:
+      context: ./courses-api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - MONGODB_URI=mongodb://root:root@mongodb:27017
+      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      - mongodb
+      - rabbitmq
+
+  inscriptions-api:
+    build:
+      context: ./inscriptions-api
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=rootpassword
+      - DB_NAME=inscriptions
+      - USERS_API_URL=http://users-api:8082
+      - COURSES_API_URL=http://courses-api:8080
+    depends_on:
+      - mysql
+      - courses-api
+
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: inscriptions
+    ports:
+      - "3306:3306"
+
+  mongodb:
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+volumes:
+  mongodb_data:

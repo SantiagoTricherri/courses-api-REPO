@@ -40,8 +40,6 @@ func (ctrl *Controller) CreateInscription(c *gin.Context) {
 		status := http.StatusInternalServerError
 		if err.Error() == "user does not exist" || err.Error() == "course does not exist" {
 			status = http.StatusNotFound
-		} else if err.Error() == "inscription already exists" {
-			status = http.StatusConflict
 		}
 		c.JSON(status, gin.H{"error": err.Error()})
 		return

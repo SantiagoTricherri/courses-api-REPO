@@ -10,10 +10,7 @@ import (
 )
 
 type RabbitConfig struct {
-	Username  string
-	Password  string
-	Host      string
-	Port      string
+	URI       string
 	QueueName string
 }
 
@@ -24,15 +21,18 @@ type Rabbit struct {
 }
 
 func NewRabbit(config RabbitConfig) Rabbit {
-	connection, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s:%s/", config.Username, config.Password, config.Host, config.Port))
+	connection, err := amqp.Dial(config.URI)
 	if err != nil {
-		log.Fatalf("error getting Rabbit connection: %w", err)
+		log.Fatalf("error getting Rabbit connection: %v", err)
 	}
 	channel, err := connection.Channel()
 	if err != nil {
-		log.Fatalf("error creating Rabbit channel: %w", err)
+		log.Fatalf("error creating Rabbit channel: %v", err)
 	}
 	queue, err := channel.QueueDeclare(config.QueueName, false, false, false, false, nil)
+	if err != nil {
+		log.Fatalf("error declaring Rabbit queue: %v", err)
+	}
 	return Rabbit{
 		connection: connection,
 		channel:    channel,

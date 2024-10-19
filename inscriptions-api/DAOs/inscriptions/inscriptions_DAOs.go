@@ -21,30 +21,14 @@ type InscriptionModel struct {
 func NewInscriptionDAO(db *gorm.DB) *InscriptionDAO {
 	return &InscriptionDAO{db: db}
 }
-
 func (dao *InscriptionDAO) CreateInscription(ctx context.Context, userID, courseID uint) (*domain.Inscription, error) {
-	// Verificar si el usuario y el curso existen
-	var userCount, courseCount int64
-
-	if err := dao.db.WithContext(ctx).Table("users").Where("id = ?", userID).Count(&userCount).Error; err != nil {
-		return nil, err
-	}
-	if userCount == 0 {
-		return nil, errors.New("user does not exist")
-	}
-
-	if err := dao.db.WithContext(ctx).Table("courses").Where("id = ?", courseID).Count(&courseCount).Error; err != nil {
-		return nil, err
-	}
-	if courseCount == 0 {
-		return nil, errors.New("course does not exist")
-	}
-
 	// Verificar si la inscripción ya existe
 	var inscription InscriptionModel
 	if err := dao.db.WithContext(ctx).Where("user_id = ? AND course_id = ?", userID, courseID).
 		First(&inscription).Error; err == nil {
 		return nil, errors.New("inscription already exists")
+	} else if err != gorm.ErrRecordNotFound {
+		return nil, err
 	}
 
 	// Crear la inscripción

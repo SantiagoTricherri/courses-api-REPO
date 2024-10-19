@@ -10,34 +10,32 @@ import (
 	"gorm.io/gorm"
 )
 
+// Función auxiliar para obtener variables de entorno con valores predeterminados
+func getEnv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
 func Connect() (*gorm.DB, error) {
-	// Primero, conecta sin especificar una base de datos
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/",
-		os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"))
+	dbHost := getEnv("DB_HOST", "mysql")
+	dbPort := getEnv("DB_PORT", "3306")
+	dbUser := getEnv("DB_USER", "root")
+	dbPassword := getEnv("DB_PASSWORD", "rootpassword")
+	dbName := getEnv("DB_NAME", "inscriptions")
+
+	fmt.Printf("Connecting to MySQL: Host=%s, Port=%s, User=%s, DBName=%s\n", dbHost, dbPort, dbUser, dbName)
+
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&timeout=30s",
+		dbUser, dbPassword, dbHost, dbPort, dbName)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to MySQL: %v", err)
 	}
 
-	// Crea la base de datos si no existe
-	dbName := os.Getenv("DB_NAME")
-	err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", dbName)).Error
-	if err != nil {
-		return nil, fmt.Errorf("error creating database: %v", err)
-	}
-
-	// Conecta a la base de datos recién creada
-	dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"), dbName)
-
-	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		return nil, fmt.Errorf("error connecting to created database: %v", err)
-	}
-	// Migración automática de los modelos
 	err = db.AutoMigrate(&dao.InscriptionModel{})
 	if err != nil {
 		return nil, fmt.Errorf("error migrating database: %v", err)
