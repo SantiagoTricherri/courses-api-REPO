@@ -33,9 +33,10 @@ func main() {
 		getEnv("COURSES_API_URL", "http://localhost:8080"), // Asegúrate de que esta URL sea correcta
 	)
 
-	// Inicialización de DAO, servicio y controlador.
+	// Inicialización de DAO, repositorio, servicio y controlador.
 	inscriptionDAO := dao.NewInscriptionDAO(db)
-	inscriptionService := service.NewService(inscriptionDAO, httpClient)
+	inscriptionRepository := repositories.NewInscriptionRepository(inscriptionDAO)
+	inscriptionService := service.NewService(inscriptionRepository, httpClient)
 	inscriptionController := controller.NewController(inscriptionService)
 
 	// Configuración del router.

@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"courses-api/clients"
 	"courses-api/clients/rabbit"
 	commentsController "courses-api/controllers/comments"
 	coursesController "courses-api/controllers/courses"
@@ -18,9 +19,29 @@ import (
 	coursesServices "courses-api/services/courses"
 	filesServices "courses-api/services/files"
 
+	"github.com/streadway/amqp"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+const (
+	maxRetries = 5
+	baseDelay  = 5 * time.Second
+)
+
+func connectWithRetry(connect func() error) error {
+	var err error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		err = connect()
+		if err == nil {
+			return nil
+		}
+		delay := time.Duration(attempt) * baseDelay
+		log.Printf("Attempt %d failed: %v. Retrying in %v...", attempt, err, delay)
+		time.Sleep(delay)
+	}
+	return err
+}
 
 func main() {
 	// Configuración del cliente MongoDB
@@ -29,28 +50,25 @@ func main() {
 		mongoURI = "mongodb://localhost:27017"
 	}
 
-	// Crear cliente de MongoDB
-	clientOptions := options.Client().ApplyURI(mongoURI)
-	client, err := mongo.NewClient(clientOptions)
+	// Crear cliente de MongoDB con reintento
+	var client *mongo.Client
+	err := connectWithRetry(func() error {
+		var err error
+		client, err = mongo.NewClient(options.Client().ApplyURI(mongoURI))
+		if err != nil {
+			return err
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return client.Connect(ctx)
+	})
 	if err != nil {
-		log.Fatalf("Error al crear el cliente de MongoDB: %v", err)
+		log.Fatalf("Failed to connect to MongoDB after retries: %v", err)
 	}
 
-	// Conectar con MongoDB
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := client.Connect(ctx); err != nil {
-		log.Fatalf("Error al conectar con MongoDB: %v", err)
-	}
-
-	// Inicializar el contador de cursos
+	// Inicializar contadores
 	coursesRepositories.InitializeCounter(client, "courses-api", "courses")
-
-	// Inicializar el contador de comentarios
 	commentsRepositories.InitializeCommentCounter(client, "courses-api", "comments")
-
-	// Inicializar el contador de archivos
 	filesRepositories.InitializeFileCounter(client, "courses-api", "files")
 
 	// Configurar RabbitMQ
@@ -62,11 +80,46 @@ func main() {
 		URI:       rabbitURI,
 		QueueName: "courses_queue",
 	}
-	rabbitQueue := rabbit.NewRabbit(rabbitConfig)
+
+	// Conectar a RabbitMQ con reintento
+	var rabbitConn *amqp.Connection
+	err = connectWithRetry(func() error {
+		var err error
+		rabbitConn, err = amqp.Dial(rabbitConfig.URI)
+		return err
+	})
+	if err != nil {
+		log.Fatalf("Failed to connect to RabbitMQ after retries: %v", err)
+	}
+	defer rabbitConn.Close()
+
+	rabbitChannel, err := rabbitConn.Channel()
+	if err != nil {
+		log.Fatalf("Failed to open a channel: %v", err)
+	}
+	defer rabbitChannel.Close()
+
+	queue, err := rabbitChannel.QueueDeclare(
+		rabbitConfig.QueueName,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Fatalf("Failed to declare a queue: %v", err)
+	}
+
+	rabbitQueue := rabbit.Rabbit{
+		Connection: rabbitConn,
+		Channel:    rabbitChannel,
+		Queue:      queue,
+	}
 
 	// Crear instancias del repositorio
 	courseRepo := coursesRepositories.NewMongo(coursesRepositories.MongoConfig{
-		Host:       "mongodb", // Nombre del servicio en docker-compose
+		Host:       "mongodb",
 		Port:       "27017",
 		Username:   "root",
 		Password:   "root",
@@ -74,12 +127,22 @@ func main() {
 		Collection: "courses",
 	})
 	commentRepo := commentsRepositories.NewCommentsMongo(client, "courses-api", "comments")
+	fileRepo := filesRepositories.NewMongo(client, "courses-api", "files")
+
+	// Crear el cliente HTTP para la API de inscripciones
+	inscriptionsAPIURL := os.Getenv("INSCRIPTIONS_API_URL")
+	if inscriptionsAPIURL == "" {
+		inscriptionsAPIURL = "http://inscriptions-api:8081"
+	}
+	httpClient := clients.NewHTTPClient(inscriptionsAPIURL)
 
 	// Crear el servicio de cursos
 	courseService := coursesServices.NewService(
 		courseRepo,
 		commentRepo,
-		rabbitQueue,
+		fileRepo,
+		&rabbitQueue,
+		httpClient,
 	)
 
 	// Crear el controlador de cursos
@@ -90,7 +153,6 @@ func main() {
 	commentController := commentsController.NewController(commentService)
 
 	// Crear instancias para archivos
-	fileRepo := filesRepositories.NewMongo(client, "courses-api", "files")
 	fileService := filesServices.NewService(fileRepo)
 	fileController := filesController.NewController(fileService)
 

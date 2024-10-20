@@ -83,3 +83,11 @@ func (m Mongo) GetFilesByCourseID(ctx context.Context, courseID int64) ([]filesD
 	}
 	return filesData, nil
 }
+
+func (m Mongo) DeleteFilesByCourseID(ctx context.Context, courseID int64) error {
+	_, err := m.client.Database(m.database).Collection(m.collection).DeleteMany(ctx, bson.M{"course_id": courseID})
+	if err != nil {
+		return fmt.Errorf("failed to delete files for course: %v", err)
+	}
+	return nil
+}

@@ -37,7 +37,7 @@ services:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: inscriptions
     ports:
-      - "3306:3306"
+      - "3307:3306"
 
   mongodb:
     image: mongo:latest

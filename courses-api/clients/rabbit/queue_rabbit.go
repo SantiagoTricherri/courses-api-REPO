@@ -15,9 +15,9 @@ type RabbitConfig struct {
 }
 
 type Rabbit struct {
-	connection *amqp.Connection
-	channel    *amqp.Channel
-	queue      amqp.Queue
+	Connection *amqp.Connection
+	Channel    *amqp.Channel
+	Queue      amqp.Queue
 }
 
 func NewRabbit(config RabbitConfig) Rabbit {
@@ -34,9 +34,9 @@ func NewRabbit(config RabbitConfig) Rabbit {
 		log.Fatalf("error declaring Rabbit queue: %v", err)
 	}
 	return Rabbit{
-		connection: connection,
-		channel:    channel,
-		queue:      queue,
+		Connection: connection,
+		Channel:    channel,
+		Queue:      queue,
 	}
 }
 
@@ -45,9 +45,9 @@ func (r Rabbit) Publish(cursoNew courses.CursosNew) error {
 	if err != nil {
 		return fmt.Errorf("error al serializar CursosNew: %w", err)
 	}
-	if err := r.channel.Publish(
+	if err := r.Channel.Publish(
 		"",
-		r.queue.Name,
+		r.Queue.Name,
 		false,
 		false,
 		amqp.Publishing{

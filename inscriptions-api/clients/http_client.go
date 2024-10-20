@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -40,4 +41,29 @@ func (c *HTTPClient) CheckCourseExists(courseID uint) error {
 	}
 
 	return nil
+}
+
+type CourseDetails struct {
+	ID       uint `json:"id"`
+	Capacity int  `json:"capacity"`
+	// Add other fields if needed
+}
+
+func (c *HTTPClient) GetCourseDetails(courseID uint) (*CourseDetails, error) {
+	resp, err := c.client.Get(fmt.Sprintf("%s/courses/%d", c.coursesAPIURL, courseID))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("course with ID %d not found", courseID)
+	}
+
+	var course CourseDetails
+	if err := json.NewDecoder(resp.Body).Decode(&course); err != nil {
+		return nil, fmt.Errorf("error decoding course details: %v", err)
+	}
+
+	return &course, nil
 }

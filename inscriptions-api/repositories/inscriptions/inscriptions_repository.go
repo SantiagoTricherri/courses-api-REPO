@@ -1,10 +1,13 @@
 package repositories
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 
 	dao "inscriptions-api/DAOs/inscriptions"
+	domain "inscriptions-api/domain/inscriptions"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -42,4 +45,79 @@ func Connect() (*gorm.DB, error) {
 	}
 
 	return db, nil
+}
+
+type InscriptionRepository struct {
+	dao *dao.InscriptionDAO
+}
+
+func NewInscriptionRepository(dao *dao.InscriptionDAO) *InscriptionRepository {
+	return &InscriptionRepository{dao: dao}
+}
+
+func (r *InscriptionRepository) CreateInscription(ctx context.Context, userID, courseID uint) (*domain.Inscription, error) {
+	var inscription dao.InscriptionModel
+	if err := r.dao.DB().WithContext(ctx).Where("user_id = ? AND course_id = ?", userID, courseID).
+		First(&inscription).Error; err == nil {
+		return nil, errors.New("inscription already exists")
+	} else if err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+
+	newInscription := dao.InscriptionModel{UserID: userID, CourseID: courseID}
+	if err := r.dao.DB().WithContext(ctx).Create(&newInscription).Error; err != nil {
+		return nil, err
+	}
+
+	return &domain.Inscription{
+		ID:       newInscription.ID,
+		UserID:   newInscription.UserID,
+		CourseID: newInscription.CourseID,
+	}, nil
+}
+
+func (r *InscriptionRepository) GetInscriptions(ctx context.Context) ([]domain.Inscription, error) {
+	var inscriptionsModel []dao.InscriptionModel
+	if err := r.dao.DB().WithContext(ctx).Find(&inscriptionsModel).Error; err != nil {
+		return nil, err
+	}
+
+	return r.mapModelsToDomain(inscriptionsModel), nil
+}
+
+func (r *InscriptionRepository) GetInscriptionsByUser(ctx context.Context, userID uint) ([]domain.Inscription, error) {
+	var inscriptionsModel []dao.InscriptionModel
+	if err := r.dao.DB().WithContext(ctx).Where("user_id = ?", userID).Find(&inscriptionsModel).Error; err != nil {
+		return nil, err
+	}
+
+	return r.mapModelsToDomain(inscriptionsModel), nil
+}
+
+func (r *InscriptionRepository) mapModelsToDomain(models []dao.InscriptionModel) []domain.Inscription {
+	inscriptions := make([]domain.Inscription, len(models))
+	for i, model := range models {
+		inscriptions[i] = domain.Inscription{
+			ID:       model.ID,
+			UserID:   model.UserID,
+			CourseID: model.CourseID,
+		}
+	}
+	return inscriptions
+}
+
+type Repository interface {
+	CreateInscription(ctx context.Context, userID, courseID uint) (*domain.Inscription, error)
+	GetInscriptions(ctx context.Context) ([]domain.Inscription, error)
+	GetInscriptionsByUser(ctx context.Context, userID uint) ([]domain.Inscription, error)
+	GetInscriptionsByCourse(ctx context.Context, courseID uint) ([]domain.Inscription, error)
+}
+
+func (r *InscriptionRepository) GetInscriptionsByCourse(ctx context.Context, courseID uint) ([]domain.Inscription, error) {
+	var inscriptionsModel []dao.InscriptionModel
+	if err := r.dao.DB().WithContext(ctx).Where("course_id = ?", courseID).Find(&inscriptionsModel).Error; err != nil {
+		return nil, err
+	}
+
+	return r.mapModelsToDomain(inscriptionsModel), nil
 }

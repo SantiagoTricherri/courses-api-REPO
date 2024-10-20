@@ -3,7 +3,9 @@ package courses
 import (
 	"context"
 	coursesDAO "courses-api/DAO/courses"
+	"courses-api/clients"
 	"courses-api/domain/courses"
+	"errors"
 	"fmt"
 )
 
@@ -25,19 +27,28 @@ type Queue interface {
 	Publish(courseNew courses.CursosNew) error
 }
 
+// FilesRepository interface para las operaciones de archivos
+type FilesRepository interface {
+	DeleteFilesByCourseID(ctx context.Context, courseID int64) error
+}
+
 // Service estructura para el servicio de cursos
 type Service struct {
 	repository         Repository
 	commentsRepository CommentsRepository
+	filesRepository    FilesRepository
 	eventsQueue        Queue
+	httpClient         *clients.HTTPClient
 }
 
 // NewService constructor para el servicio de cursos
-func NewService(repository Repository, commentsRepository CommentsRepository, eventsQueue Queue) Service {
+func NewService(repository Repository, commentsRepository CommentsRepository, filesRepository FilesRepository, eventsQueue Queue, httpClient *clients.HTTPClient) Service {
 	return Service{
 		repository:         repository,
 		commentsRepository: commentsRepository,
+		filesRepository:    filesRepository,
 		eventsQueue:        eventsQueue,
+		httpClient:         httpClient,
 	}
 }
 
@@ -180,13 +191,29 @@ func (s Service) UpdateCourse(ctx context.Context, id int64, req courses.UpdateC
 }
 
 func (s Service) DeleteCourse(ctx context.Context, id int64) error {
-	// Primero, eliminamos los comentarios asociados al curso
-	err := s.commentsRepository.DeleteCommentsByCourseID(ctx, id)
+	// Verificar si hay inscripciones para este curso
+	inscriptions, err := s.httpClient.GetInscriptionsByCourse(uint(id))
+	if err != nil {
+		return fmt.Errorf("error al verificar inscripciones: %v", err)
+	}
+
+	if len(inscriptions) > 0 {
+		return errors.New("no se puede eliminar el curso porque tiene inscripciones activas")
+	}
+
+	// Eliminar los comentarios asociados al curso
+	err = s.commentsRepository.DeleteCommentsByCourseID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("error al eliminar los comentarios del curso: %v", err)
 	}
 
-	// Luego, eliminamos el curso
+	// Eliminar los archivos asociados al curso
+	err = s.filesRepository.DeleteFilesByCourseID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("error al eliminar los archivos del curso: %v", err)
+	}
+
+	// Eliminar el curso
 	err = s.repository.DeleteCourse(ctx, id)
 	if err != nil {
 		return fmt.Errorf("error al eliminar el curso: %v", err)

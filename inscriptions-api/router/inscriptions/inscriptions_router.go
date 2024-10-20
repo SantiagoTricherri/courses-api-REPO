@@ -11,4 +11,5 @@ func MapRoutes(r *gin.Engine, ctrl *controller.Controller) {
 	r.POST("/inscriptions", ctrl.CreateInscription)
 	r.GET("/inscriptions", ctrl.GetInscriptions)
 	r.GET("/users/:userID/inscriptions", ctrl.GetInscriptionsByUser)
+	r.GET("/courses/:courseID/inscriptions", ctrl.GetInscriptionsByCourse)
 }

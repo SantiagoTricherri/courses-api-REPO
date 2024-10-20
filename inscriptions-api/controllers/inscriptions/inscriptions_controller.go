@@ -15,6 +15,7 @@ type Service interface {
 	CreateInscription(ctx context.Context, userID, courseID uint) (*domain.Inscription, error)
 	GetInscriptions(ctx context.Context) ([]domain.Inscription, error)
 	GetInscriptionsByUser(ctx context.Context, userID uint) ([]domain.Inscription, error)
+	GetInscriptionsByCourse(ctx context.Context, courseID uint) ([]domain.Inscription, error)
 }
 
 type Controller struct {
@@ -66,6 +67,22 @@ func (ctrl *Controller) GetInscriptionsByUser(c *gin.Context) {
 	}
 
 	inscriptions, err := ctrl.service.GetInscriptionsByUser(c.Request.Context(), uint(userID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, inscriptions)
+}
+
+func (ctrl *Controller) GetInscriptionsByCourse(c *gin.Context) {
+	courseIDParam := c.Param("courseID")
+	courseID, err := strconv.ParseUint(courseIDParam, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid course ID: %s", courseIDParam)})
+		return
+	}
+
+	inscriptions, err := ctrl.service.GetInscriptionsByCourse(c.Request.Context(), uint(courseID))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
