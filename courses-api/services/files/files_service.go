@@ -2,29 +2,45 @@ package files
 
 import (
 	"context"
+	coursesDAO "courses-api/DAO/courses"
 	filesDAO "courses-api/DAO/files"
 	"courses-api/domain/files"
 	"fmt"
 )
 
-// Interface del repositorio
+// Interface del repositorio de archivos
 type Repository interface {
 	CreateFile(ctx context.Context, file filesDAO.File) (filesDAO.File, error)
 	GetFilesByCourseID(ctx context.Context, courseID int64) ([]filesDAO.File, error)
 }
 
+// Interface del repositorio de cursos
+type CourseRepository interface {
+	GetCourseByID(ctx context.Context, id int64) (coursesDAO.Course, error)
+}
+
 // Servicio de archivos
 type Service struct {
-	repository Repository
+	repository       Repository
+	courseRepository CourseRepository
 }
 
 // Constructor del servicio
-func NewService(repo Repository) Service {
-	return Service{repository: repo}
+func NewService(repo Repository, courseRepo CourseRepository) Service {
+	return Service{
+		repository:       repo,
+		courseRepository: courseRepo,
+	}
 }
 
 // Crear archivo
 func (s Service) CreateFile(ctx context.Context, req files.CreateFileRequest) (files.FileResponse, error) {
+	// Verificar si el curso existe
+	_, err := s.courseRepository.GetCourseByID(ctx, req.CourseID)
+	if err != nil {
+		return files.FileResponse{}, fmt.Errorf("el curso no existe: %v", err)
+	}
+
 	file := filesDAO.File{
 		Name:     req.Name,
 		Content:  []byte(req.Content),
@@ -34,7 +50,7 @@ func (s Service) CreateFile(ctx context.Context, req files.CreateFileRequest) (f
 
 	createdFile, err := s.repository.CreateFile(ctx, file)
 	if err != nil {
-		return files.FileResponse{}, fmt.Errorf("failed to create file: %v", err)
+		return files.FileResponse{}, fmt.Errorf("error al crear el archivo: %v", err)
 	}
 
 	return files.FileResponse{

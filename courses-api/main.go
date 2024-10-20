@@ -153,7 +153,7 @@ func main() {
 	commentController := commentsController.NewController(commentService)
 
 	// Crear instancias para archivos
-	fileService := filesServices.NewService(fileRepo)
+	fileService := filesServices.NewService(fileRepo, courseRepo)
 	fileController := filesController.NewController(fileService)
 
 	// Configurar las rutas
