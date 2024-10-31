@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
 	"log"
 	"search-api/clients/queues"
-	"search-api/controllers/search"
+	searchController "search-api/controllers/search"
 	"search-api/repositories/courses"
-	"search-api/services/search"
+	searchService "search-api/services/search"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -33,10 +34,10 @@ func main() {
 	})
 
 	// Inicialización del servicio de búsqueda
-	searchService := search.NewService(solrRepo, coursesAPI)
+	searchService := searchService.NewService(solrRepo, coursesAPI)
 
 	// Inicialización del controlador de búsqueda
-	searchController := search.NewController(searchService)
+	searchController := searchController.NewController(searchService)
 
 	// Lanzar el consumidor de RabbitMQ
 	if err := eventsQueue.StartConsumer(searchService.HandleCourseUpdate); err != nil {

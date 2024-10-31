@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # Servicio de la aplicación de cursos
   courses-api:
     build:
       context: ./courses-api
@@ -14,6 +15,7 @@ services:
       - mongodb
       - rabbitmq
 
+  # Servicio de la aplicación de inscripciones
   inscriptions-api:
     build:
       context: ./inscriptions-api
@@ -31,6 +33,22 @@ services:
       - mysql
       - courses-api
 
+  # Servicio de la aplicación de búsqueda
+  search-api:
+    build:
+      context: .
+    ports:
+      - "8082:8082"      # Expone el puerto 8082 para acceder a la API de búsqueda
+    depends_on:
+      - solr
+      - rabbitmq
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - SOLR_HOST=solr
+      - SOLR_PORT=8983
+
+  # Servicio de MySQL
   mysql:
     image: mysql:5.7
     environment:
@@ -39,6 +57,7 @@ services:
     ports:
       - "3307:3306"
 
+  # Servicio de MongoDB
   mongodb:
     image: mongo:latest
     environment:
@@ -49,11 +68,30 @@ services:
     volumes:
       - mongodb_data:/data/db
 
+  # Servicio de SolR
+  solr:
+    image: solr:8.11.1
+    ports:
+      - "8983:8983"      # Expone el puerto 8983 para acceder a la interfaz de SolR
+    volumes:
+      - ./solr-config:/opt/solr/server/solr/mycores/courses/conf  # Monta la configuración
+    environment:
+      - SOLR_CORE=courses
+    entrypoint:
+      - bash
+      - "-c"
+      - |
+        precreate-core courses && solr-foreground
+
+  # Servicio de RabbitMQ
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "5672:5672"      # Puerto para conexiones de aplicación
+      - "15672:15672"    # Puerto para la interfaz de gestión de RabbitMQ
+    environment:
+      - RABBITMQ_DEFAULT_USER=root
+      - RABBITMQ_DEFAULT_PASS=root
 
 volumes:
   mongodb_data:

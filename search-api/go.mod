@@ -37,6 +37,8 @@ require (
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/stevenferrer/solr-go v0.3.4
+	github.com/streadway/amqp v1.1.0
 	golang.org/x/text v0.15.0 // indirect
-	gorm.io/gorm v1.25.12 
+	gorm.io/gorm v1.25.12
 )

@@ -1,132 +1,184 @@
 package courses
 
 import (
-    "bytes"
-    "context"
-    "encoding/json"
-    "fmt"
-    "log"
-    "search-api/domain/courses"
-    "github.com/stevenferrer/solr-go"
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"search-api/domain/courses"
+
+	"github.com/stevenferrer/solr-go"
 )
 
-// SolrConfig contiene la configuración necesaria para conectarse a SolR
 type SolrConfig struct {
-    Host       string // Dirección del host de SolR
-    Port       string // Puerto de SolR
-    Collection string // Nombre de la colección en SolR
+	Host       string // Solr host
+	Port       string // Solr port
+	Collection string // Solr collection name
 }
 
-// Solr representa el cliente de SolR
 type Solr struct {
-    Client     *solr.JSONClient
-    Collection string
+	Client     *solr.JSONClient
+	Collection string
 }
 
-// NewSolr inicializa un nuevo cliente de SolR
+// NewSolr initializes a new Solr client
 func NewSolr(config SolrConfig) Solr {
-    baseURL := fmt.Sprintf("http://%s:%s", config.Host, config.Port)
-    client := solr.NewJSONClient(baseURL)
+	// Construct the BaseURL using the provided host and port
+	baseURL := fmt.Sprintf("http://%s:%s", config.Host, config.Port)
+	client := solr.NewJSONClient(baseURL)
 
-    return Solr{
-        Client:     client,
-        Collection: config.Collection,
-    }
+	return Solr{
+		Client:     client,
+		Collection: config.Collection,
+	}
 }
 
+// Index adds a new course document to the Solr collection
+func (searchEngine Solr) Index(ctx context.Context, course courses.CourseUpdate) (string, error) {
+	// Prepare the document for Solr
+	doc := map[string]interface{}{
+		"id":          course.CourseID,
+		"name":        course.Name,
+		"category":    course.Category,
+		"description": course.Description,
+	}
 
-// Index añade un nuevo curso al índice de SolR
-func (s Solr) Index(ctx context.Context, course courses.CourseUpdate) (string, error) {
-    doc := map[string]interface{}{
-        "id":          course.CourseID,
-        "name":        course.Name,
-        "category":    course.Category,
-        "description": course.Description,
-    }
+	// Prepare the index request
+	indexRequest := map[string]interface{}{
+		"add": []interface{}{doc}, // Use "add" with a list of documents
+	}
 
-    indexRequest := map[string]interface{}{
-        "add": []interface{}{doc},
-    }
+	// Index the document in Solr
+	body, err := json.Marshal(indexRequest)
+	if err != nil {
+		return "", fmt.Errorf("error marshaling course document: %w", err)
+	}
 
-    body, err := json.Marshal(indexRequest)
-    if err != nil {
-        return "", fmt.Errorf("error al serializar el documento del curso: %w", err)
-    }
+	// Index the document in Solr
+	resp, err := searchEngine.Client.Update(ctx, searchEngine.Collection, solr.JSON, bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("error indexing course: %w", err)
+	}
+	if resp.Error != nil {
+		return "", fmt.Errorf("failed to index course: %v", resp.Error)
+	}
 
-    resp, err := s.Client.Update(ctx, s.Collection, solr.JSON, bytes.NewReader(body))
-    if err != nil {
-        return "", fmt.Errorf("error al indexar el curso: %w", err)
-    }
-    if resp.Error != nil {
-        return "", fmt.Errorf("error al indexar el curso en SolR: %v", resp.Error)
-    }
+	// Commit the changes
+	if err := searchEngine.Client.Commit(ctx, searchEngine.Collection); err != nil {
+		return "", fmt.Errorf("error committing changes to Solr: %w", err)
+	}
 
-    if err := s.Client.Commit(ctx, s.Collection); err != nil {
-        return "", fmt.Errorf("error al confirmar los cambios en SolR: %w", err)
-    }
-
-    return course.CourseID, nil
+	return course.CourseID, nil
 }
 
+// Update modifies an existing course document in the Solr collection
+func (searchEngine Solr) Update(ctx context.Context, course courses.CourseUpdate) error {
+	// Prepare the document for Solr
+	doc := map[string]interface{}{
+		"id":          course.CourseID,
+		"name":        course.Name,
+		"category":    course.Category,
+		"description": course.Description,
+	}
 
-// Update modifica un curso existente en el índice de SolR
-func (s Solr) Update(ctx context.Context, course courses.CourseUpdate) error {
-    doc := map[string]interface{}{
-        "id":          course.CourseID,
-        "name":        course.Name,
-        "category":    course.Category,
-        "description": course.Description,
-    }
+	// Prepare the update request
+	updateRequest := map[string]interface{}{
+		"add": []interface{}{doc}, // Use "add" with a list of documents
+	}
 
-    updateRequest := map[string]interface{}{
-        "add": []interface{}{doc},
-    }
+	// Update the document in Solr
+	body, err := json.Marshal(updateRequest)
+	if err != nil {
+		return fmt.Errorf("error marshaling course document: %w", err)
+	}
 
-    body, err := json.Marshal(updateRequest)
-    if err != nil {
-        return fmt.Errorf("error al serializar el documento del curso: %w", err)
-    }
+	// Execute the update request
+	resp, err := searchEngine.Client.Update(ctx, searchEngine.Collection, solr.JSON, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("error updating course: %w", err)
+	}
+	if resp.Error != nil {
+		return fmt.Errorf("failed to update course: %v", resp.Error)
+	}
 
-    resp, err := s.Client.Update(ctx, s.Collection, solr.JSON, bytes.NewReader(body))
-    if err != nil {
-        return fmt.Errorf("error al actualizar el curso: %w", err)
-    }
-    if resp.Error != nil {
-        return fmt.Errorf("error al actualizar el curso en SolR: %v", resp.Error)
-    }
+	// Commit the changes
+	if err := searchEngine.Client.Commit(ctx, searchEngine.Collection); err != nil {
+		return fmt.Errorf("error committing changes to Solr: %w", err)
+	}
 
-    if err := s.Client.Commit(ctx, s.Collection); err != nil {
-        return fmt.Errorf("error al confirmar los cambios en SolR: %w", err)
-    }
-
-    return nil
+	return nil
 }
 
+// Delete removes a course document from the Solr collection
+func (searchEngine Solr) Delete(ctx context.Context, id string) error {
+	// Prepare the delete request
+	docToDelete := map[string]interface{}{
+		"delete": map[string]interface{}{
+			"id": id,
+		},
+	}
 
-// Delete elimina un curso del índice de SolR
-func (s Solr) Delete(ctx context.Context, id string) error {
-    deleteRequest := map[string]interface{}{
-        "delete": map[string]interface{}{
-            "id": id,
-        },
-    }
+	// Execute the delete request
+	body, err := json.Marshal(docToDelete)
+	if err != nil {
+		return fmt.Errorf("error marshaling course document: %w", err)
+	}
 
-    body, err := json.Marshal(deleteRequest)
-    if err != nil {
-        return fmt.Errorf("error al serializar el documento del curso para eliminar: %w", err)
-    }
+	// Execute the delete request
+	resp, err := searchEngine.Client.Update(ctx, searchEngine.Collection, solr.JSON, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("error deleting course: %w", err)
+	}
+	if resp.Error != nil {
+		return fmt.Errorf("failed to delete course: %v", resp.Error)
+	}
 
-    resp, err := s.Client.Update(ctx, s.Collection, solr.JSON, bytes.NewReader(body))
-    if err != nil {
-        return fmt.Errorf("error al eliminar el curso: %w", err)
-    }
-    if resp.Error != nil {
-        return fmt.Errorf("error al eliminar el curso en SolR: %v", resp.Error)
-    }
+	// Commit the changes
+	if err := searchEngine.Client.Commit(ctx, searchEngine.Collection); err != nil {
+		return fmt.Errorf("error committing changes to Solr: %w", err)
+	}
 
-    if err := s.Client.Commit(ctx, s.Collection); err != nil {
-        return fmt.Errorf("error al confirmar la eliminación en SolR: %w", err)
-    }
+	return nil
+}
 
-    return nil
+// Search searches for courses in the Solr collection based on a query
+func (searchEngine Solr) Search(ctx context.Context, query string, limit int, offset int) ([]courses.CourseUpdate, error) {
+	// Prepare the Solr query with limit and offset
+	solrQuery := fmt.Sprintf("q=(name:%s OR description:%s)&rows=%d&start=%d", query, query, limit, offset)
+
+	// Execute the search request
+	resp, err := searchEngine.Client.Query(ctx, searchEngine.Collection, solr.NewQuery(solrQuery))
+	if err != nil {
+		return nil, fmt.Errorf("error executing search query: %w", err)
+	}
+	if resp.Error != nil {
+		return nil, fmt.Errorf("failed to execute search query: %v", resp.Error)
+	}
+
+	// Parse the response and extract course documents
+	var coursesList []courses.CourseUpdate
+	for _, doc := range resp.Response.Documents {
+		course := courses.CourseUpdate{
+			CourseID:    getStringField(doc, "id"),
+			Name:        getStringField(doc, "name"),
+			Category:    getStringField(doc, "category"),
+			Description: getStringField(doc, "description"),
+		}
+		coursesList = append(coursesList, course)
+	}
+
+	return coursesList, nil
+}
+
+// Helper function to safely get string fields from the document
+func getStringField(doc map[string]interface{}, field string) string {
+	if val, ok := doc[field].(string); ok {
+		return val
+	}
+	if val, ok := doc[field].([]interface{}); ok && len(val) > 0 {
+		if strVal, ok := val[0].(string); ok {
+			return strVal
+		}
+	}
+	return ""
 }
