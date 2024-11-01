@@ -1,6 +1,6 @@
 module search-api
 
-go 1.22.1
+go 1.22
 
 require gorm.io/driver/mysql v1.5.7
 

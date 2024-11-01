@@ -10,7 +10,7 @@ services:
       - "8080:8080"
     environment:
       - MONGODB_URI=mongodb://root:root@mongodb:27017
-      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672/
+      - RABBITMQ_URI=amqp://root:root@rabbitmq:5672/
     depends_on:
       - mongodb
       - rabbitmq
@@ -36,9 +36,10 @@ services:
   # Servicio de la aplicación de búsqueda
   search-api:
     build:
-      context: .
+      context: ./search-api
+      dockerfile: Dockerfile
     ports:
-      - "8082:8082"      # Expone el puerto 8082 para acceder a la API de búsqueda
+      - "8082:8082"
     depends_on:
       - solr
       - rabbitmq
