@@ -24,7 +24,7 @@ func main() {
 		Port:      "5672",
 		Username:  "root",
 		Password:  "root",
-		QueueName: "courses-news",
+		QueueName: "courses_queue",
 	})
 
 	// Configuración del cliente HTTP para la API de Cursos

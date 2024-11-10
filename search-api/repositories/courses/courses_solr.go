@@ -35,7 +35,7 @@ func NewSolr(config SolrConfig) Solr {
 
 // Index adds a new course document to the Solr collection
 func (searchEngine Solr) Index(ctx context.Context, course courses.CourseUpdate) (string, error) {
-	// Prepare the document for Solr
+	// Prepare the document for SolR
 	doc := map[string]interface{}{
 		"id":          course.CourseID,
 		"name":        course.Name,
@@ -48,13 +48,12 @@ func (searchEngine Solr) Index(ctx context.Context, course courses.CourseUpdate)
 		"add": []interface{}{doc}, // Use "add" with a list of documents
 	}
 
-	// Index the document in Solr
+	// Index the document in SolR
 	body, err := json.Marshal(indexRequest)
 	if err != nil {
 		return "", fmt.Errorf("error marshaling course document: %w", err)
 	}
 
-	// Index the document in Solr
 	resp, err := searchEngine.Client.Update(ctx, searchEngine.Collection, solr.JSON, bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("error indexing course: %w", err)
@@ -65,10 +64,10 @@ func (searchEngine Solr) Index(ctx context.Context, course courses.CourseUpdate)
 
 	// Commit the changes
 	if err := searchEngine.Client.Commit(ctx, searchEngine.Collection); err != nil {
-		return "", fmt.Errorf("error committing changes to Solr: %w", err)
+		return "", fmt.Errorf("error committing changes to SolR: %w", err)
 	}
 
-	return course.CourseID, nil
+	return fmt.Sprintf("%d", course.CourseID), nil // Convert CourseID to string
 }
 
 // Update modifies an existing course document in the Solr collection
@@ -144,7 +143,7 @@ func (searchEngine Solr) Delete(ctx context.Context, id string) error {
 // Search searches for courses in the Solr collection based on a query
 func (searchEngine Solr) Search(ctx context.Context, query string, limit int, offset int) ([]courses.CourseUpdate, error) {
 	// Prepare the Solr query with limit and offset
-	solrQuery := fmt.Sprintf("q=(name:%s OR description:%s)&rows=%d&start=%d", query, query, limit, offset)
+	solrQuery := fmt.Sprintf("q=(name:%s OR description:%s)&rows=%d&start=%d&wt=json", query, query, limit, offset)
 
 	// Execute the search request
 	resp, err := searchEngine.Client.Query(ctx, searchEngine.Collection, solr.NewQuery(solrQuery))
@@ -159,7 +158,7 @@ func (searchEngine Solr) Search(ctx context.Context, query string, limit int, of
 	var coursesList []courses.CourseUpdate
 	for _, doc := range resp.Response.Documents {
 		course := courses.CourseUpdate{
-			CourseID:    getStringField(doc, "id"),
+			CourseID:    getIntField(doc, "id"),
 			Name:        getStringField(doc, "name"),
 			Category:    getStringField(doc, "category"),
 			Description: getStringField(doc, "description"),
@@ -181,4 +180,12 @@ func getStringField(doc map[string]interface{}, field string) string {
 		}
 	}
 	return ""
+}
+
+// Helper function to safely get int64 fields from the document
+func getIntField(doc map[string]interface{}, field string) int64 {
+	if val, ok := doc[field].(float64); ok {
+		return int64(val)
+	}
+	return 0
 }

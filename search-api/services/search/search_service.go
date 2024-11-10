@@ -53,10 +53,10 @@ func (service Service) HandleCourseUpdate(courseUpdate domain.CourseUpdate) {
 
 	case "DELETE":
 		// Eliminar el curso del índice de SolR
-		if err := service.repository.Delete(ctx, courseUpdate.CourseID); err != nil {
-			log.Printf("Error al eliminar el curso (%s): %v", courseUpdate.CourseID, err)
+		if err := service.repository.Delete(ctx, fmt.Sprintf("%d", courseUpdate.CourseID)); err != nil { // Convierte courseUpdate.CourseID a string
+			log.Printf("Error al eliminar el curso (%d): %v", courseUpdate.CourseID, err)
 		} else {
-			log.Printf("Curso eliminado exitosamente: %s", courseUpdate.CourseID)
+			log.Printf("Curso eliminado exitosamente: %d", courseUpdate.CourseID)
 		}
 
 	default:
