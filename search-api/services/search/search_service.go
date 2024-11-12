@@ -35,7 +35,7 @@ func (service Service) HandleCourseUpdate(courseUpdate domain.CourseUpdate) {
 	ctx := context.Background()
 
 	switch courseUpdate.Operation {
-	case "CREATE":
+	case "POST":
 		// Indexar el nuevo curso en SolR
 		if _, err := service.repository.Index(ctx, courseUpdate); err != nil {
 			log.Printf("Error al indexar el curso (%s): %v", courseUpdate.CourseID, err)

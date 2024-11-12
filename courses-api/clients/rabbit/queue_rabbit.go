@@ -43,8 +43,11 @@ func NewRabbit(config RabbitConfig) Rabbit {
 func (r Rabbit) Publish(cursoNew courses.CursosNew) error {
 	bytes, err := json.Marshal(cursoNew)
 	if err != nil {
+		log.Printf("Error al serializar CursosNew: %v", err)
 		return fmt.Errorf("error al serializar CursosNew: %w", err)
 	}
+	log.Println("Mensaje serializado:", string(bytes))
+
 	if err := r.Channel.Publish(
 		"",
 		r.Queue.Name,
@@ -54,7 +57,9 @@ func (r Rabbit) Publish(cursoNew courses.CursosNew) error {
 			ContentType: "application/json",
 			Body:        bytes,
 		}); err != nil {
+		log.Printf("Error al publicar en Rabbit: %v", err)
 		return fmt.Errorf("error al publicar en Rabbit: %w", err)
 	}
+	log.Println("Mensaje publicado correctamente en RabbitMQ")
 	return nil
 }

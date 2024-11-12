@@ -75,14 +75,10 @@ services:
     ports:
       - "8983:8983"      # Expone el puerto 8983 para acceder a la interfaz de SolR
     volumes:
-      - ./solr-config:/opt/solr/server/solr/mycores/courses/conf  # Monta la configuración
-    environment:
-      - SOLR_CORE=courses
-    entrypoint:
-      - bash
-      - "-c"
-      - |
-        precreate-core courses && solr-foreground
+      - ./search-api/solr-config:/opt/solr/server/solr/mycores/courses/conf  # Monta la configuración
+    
+    command: solr-create -c courses
+
 
   # Servicio de RabbitMQ
   rabbitmq:
