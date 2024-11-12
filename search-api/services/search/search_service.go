@@ -6,6 +6,7 @@ import (
 	"log"
 	domain "search-api/domain/courses"     // Alias para los tipos de dominio
 	repo "search-api/repositories/courses" // Alias para los repositorios
+	"strconv"
 )
 
 // Repository define las operaciones necesarias en el índice de SolR
@@ -34,21 +35,32 @@ func NewService(repository Repository, httpClient repo.HTTP) Service {
 func (service Service) HandleCourseUpdate(courseUpdate domain.CourseUpdate) {
 	ctx := context.Background()
 
+	// Convertir CourseID a string
+	courseIDStr := strconv.FormatInt(courseUpdate.CourseID, 10)
+
+	// Llamar a GetCourseByID y almacenar el resultado en 'curso'
+	curso, err := service.httpClient.GetCourseByID(ctx, courseIDStr)
+	if err != nil {
+		log.Printf("Error al obtener el curso (%s): %v", courseIDStr, err)
+		return // Salir de la función si hay un error
+	}
+
 	switch courseUpdate.Operation {
 	case "POST":
+		fmt.Println("Course update: ", courseUpdate)
 		// Indexar el nuevo curso en SolR
-		if _, err := service.repository.Index(ctx, courseUpdate); err != nil {
-			log.Printf("Error al indexar el curso (%s): %v", courseUpdate.CourseID, err)
+		if _, err := service.repository.Index(ctx, curso); err != nil { // Usar 'curso' en lugar de 'courseUpdate'
+			log.Printf("Error al indexar el curso (%d): %v", curso.CourseID, err)
 		} else {
-			log.Printf("Curso indexado exitosamente: %s", courseUpdate.CourseID)
+			log.Printf("Curso indexado exitosamente: %d", curso.CourseID)
 		}
 
 	case "UPDATE":
 		// Actualizar el curso existente en SolR
-		if err := service.repository.Update(ctx, courseUpdate); err != nil {
-			log.Printf("Error al actualizar el curso (%s): %v", courseUpdate.CourseID, err)
+		if err := service.repository.Update(ctx, curso); err != nil { //
+			log.Printf("Error al actualizar el curso (%d): %v", courseUpdate.CourseID, err)
 		} else {
-			log.Printf("Curso actualizado exitosamente: %s", courseUpdate.CourseID)
+			log.Printf("Curso actualizado exitosamente: %d", courseUpdate.CourseID)
 		}
 
 	case "DELETE":

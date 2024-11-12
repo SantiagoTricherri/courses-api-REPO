@@ -213,12 +213,13 @@ func (s Service) DeleteCourse(ctx context.Context, id int64) error {
 		return fmt.Errorf("error al eliminar los archivos del curso: %v", err)
 	}
 
-	// Eliminar el curso
-	err = s.repository.DeleteCourse(ctx, id)
+	// Eliminar el curso del repositorio
+	err = s.repository.DeleteCourse(ctx, id) // Asegúrate de que DeleteCourse acepte int64 en el repositorio
 	if err != nil {
 		return fmt.Errorf("error al eliminar el curso: %v", err)
 	}
 
+	// Publicar el evento en la cola de RabbitMQ
 	go func() {
 		if err := s.eventsQueue.Publish(courses.CursosNew{
 			Operation: "DELETE",

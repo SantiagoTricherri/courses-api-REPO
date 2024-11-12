@@ -1,19 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <schema name="courses" version="1.6">
-    <!-- Definición de los campos del curso -->
     <fields>
-<field name="id" type="string" indexed="true" stored="true" required="true"/>
-<field name="name" type="text_general" indexed="true" stored="true"/>
-<field name="category" type="text_general" indexed="true" stored="true"/>
-<field name="description" type="text_general" indexed="true" stored="true"/>
+        <field name="id" type="pint" indexed="true" stored="true" required="true"/>
+        <field name="name" type="text_general" indexed="true" stored="true"/>
+        <field name="category" type="text_general" indexed="true" stored="true"/>
+        <field name="description" type="text_general" indexed="true" stored="true"/>
     </fields>
 
-    <!-- Clave única para el índice de SolR -->
     <uniqueKey>id</uniqueKey>
-
-    <!-- Campo de búsqueda predeterminado -->
     <defaultSearchField>name</defaultSearchField>
-
-    <!-- Definición de la similitud de búsqueda -->
     <similarity class="solr.ClassicSimilarity"/>
 </schema>
